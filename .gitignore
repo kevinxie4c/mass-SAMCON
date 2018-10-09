@@ -1,0 +1,9 @@
+*.o
+*.out
+*.txt
+*.bvh
+*.tar
+*.gz
+*.bak
+*.sh
+tags
