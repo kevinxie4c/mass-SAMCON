@@ -377,6 +377,7 @@ class Sample
     public:
 	double cost;
 	Eigen::VectorXd delta;
+	Eigen::VectorXd kernel;
 	Eigen::VectorXd ref;
 	Eigen::VectorXd resultPose;
 	Eigen::VectorXd resultVel;
@@ -394,11 +395,12 @@ class Sample
 	trajectory.push_back(resultPose);
     }
 
-	Sample(Sample *parent, size_t index, Eigen::VectorXd delta, size_t simIndex): parent(parent)
+	Sample(Sample *parent, size_t index, Eigen::VectorXd delta, Eigen::VectorXd kernel, size_t simIndex): parent(parent)
     {
 	Simulator &sim = simulators[simIndex];
 	sim.setPose(parent->resultPose, parent->resultVel);
 	this->delta = delta;
+	this->kernel = kernel;
 	for (size_t i = 0; i < 6; ++i)
 	    delta[i] = 0;
 	ref = bvh.frame[index] + delta;
@@ -559,6 +561,7 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 {
     static size_t counter = 0;
     static std::vector<Eigen::VectorXd> init_mean;
+    static std::vector<Eigen::MatrixXd> transformation;
     ++counter;
     std::ofstream f_cov;
     std::ofstream f_mean;
@@ -570,7 +573,7 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     if (counter == 1)
     {
 	for (size_t i = 0; i < vectorSize; ++i)
-	    init_mean.push_back(Eigen::VectorXd::Zero(dim));
+	    init_mean.push_back(Eigen::VectorXd::Zero(rank));
     }
     size_t trial = 0;
     std::vector<WeirdCMAES> cmaes;
@@ -588,11 +591,9 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 		    D.row(j).swap(D.row(j + 1));
 		    B.col(j).swap(B.col(j + 1));
 		}
-	std::cout << std::endl << D.transpose() << std::endl;
-	for (size_t i = rank; i < D.rows(); ++i)
-	    D[i] = 1e-2;
-	D = D.array().sqrt() * scaleMassMatrix;
-	cmaes.push_back(WeirdCMAES(dim, sampleNum, saveNum, init_sigma, init_mean[i], B, D));
+	if (counter == 1)
+	    transformation.push_back(B.leftCols(rank) * D.head(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
+	cmaes.push_back(WeirdCMAES(rank, sampleNum, saveNum, init_sigma, init_mean[i]));
     }
     std::vector<size_t> generation(vectorSize, 0);
     std::vector<size_t> notImprove(vectorSize, 0);
@@ -627,7 +628,9 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 		Sample &sample = samples[j];
 		for (size_t k = 0; k < sampleNum / samples.size(); ++k)
 		{
-		    const Sample t = Sample(&sample, startFrame + i * groupNum, cmaes[i].getSample(), omp_get_thread_num());
+		    Eigen::VectorXd kernel = cmaes[i].getSample();
+		    Eigen::VectorXd delta = transformation[i] * kernel;
+		    const Sample t = Sample(&sample, startFrame + i * groupNum, delta, kernel, omp_get_thread_num());
 #pragma omp critical (queue_section)
 		    {
 			queue.push(t);
@@ -667,10 +670,10 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	{
 	    std::vector<Sample> &tmp = savedSamples[i];
 	    std::priority_queue<Sample, std::vector<Sample>, SampleComparison> tQueue(tmp.cbegin(), tmp.cend());
-	    Eigen::MatrixXd X(dim, saveNum);
+	    Eigen::MatrixXd X(rank, saveNum);
 	    for (size_t j = 0; j < saveNum; ++j)
 	    {
-		X.col(j) = tQueue.top().delta;
+		X.col(j) = tQueue.top().kernel;
 		tQueue.pop();
 	    }
 	    cmaes[i].update(X);
@@ -758,19 +761,19 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     for (size_t i = 1; i < savedSamples.size(); ++i)
     {
 	size_t h = 0;
-	init_mean[i] = Eigen::VectorXd::Zero(dim);
+	init_mean[i] = Eigen::VectorXd::Zero(rank);
 	for (const Sample &s: savedSamples[i])
 	{
 	    if (s.height >= 4)
 	    {
-		init_mean[i] += s.delta * s.height;
+		init_mean[i] += s.kernel * s.height;
 		h += s.height;
 	    }
 	}
 	if (h > 0)
 	    init_mean[i] /= h;
 	else
-	    init_mean[i] = Eigen::VectorXd::Zero(dim);
+	    init_mean[i] = Eigen::VectorXd::Zero(rank);
     }
     init_sigma *= 0.7;
     f_cov.close();

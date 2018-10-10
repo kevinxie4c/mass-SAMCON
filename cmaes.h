@@ -21,7 +21,7 @@ public:
 	std::default_random_engine gen;
 	std::normal_distribution<double> dist;
 
-	WeirdCMAES(size_t n, size_t lambda, size_t mu, double sigma, Eigen::VectorXd xmean, Eigen::MatrixXd B, Eigen::VectorXd D):N(n), lambda(lambda), mu(mu), sigma(sigma)
+	WeirdCMAES(size_t n, size_t lambda, size_t mu, double sigma, Eigen::VectorXd xmean):N(n), lambda(lambda), mu(mu), sigma(sigma)
 	{
 		using namespace Eigen;
 		this->xmean = xmean;
@@ -42,8 +42,8 @@ public:
 		// dynamic
 		pc = VectorXd::Zero(N);
 		ps = VectorXd::Zero(N);
-		this->B = B;
-		this->D = D;
+		B = MatrixXd::Identity(N, N);
+		D = VectorXd::Ones(N);
 		C = B * D.array().square().matrix().asDiagonal() * B.transpose();
 		invsqrtC = B * D.array().inverse().matrix().asDiagonal() * B.transpose();
 		eigeneval = 0;
