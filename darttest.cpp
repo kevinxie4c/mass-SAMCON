@@ -5,6 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <cassert>
 #include <cfloat>
 #include <Eigen/Core>
@@ -381,7 +382,7 @@ class Sample
 	Eigen::VectorXd ref;
 	Eigen::VectorXd resultPose;
 	Eigen::VectorXd resultVel;
-	Sample *parent = nullptr;
+	std::shared_ptr<Sample> parent = nullptr;
 	double totalCost = 0; // total cost from ascendant to sample
 	double accumCost = 0; // accumulative cost of the best path from the sample to the leaves
 	size_t height = 0;
@@ -390,44 +391,44 @@ class Sample
 	//Sample(Eigen::VectorXd pose): cost(0), parent(nullptr), resultPose(pose), resultVel(Eigen::VectorXd::Zero(bvh.getChannelSize())) {}
 
 	Sample(size_t index): cost(0), parent(nullptr)
-    {
-	setStateAt(index, resultPose, resultVel);
-	trajectory.push_back(resultPose);
-    }
+	{
+	    setStateAt(index, resultPose, resultVel);
+	    trajectory.push_back(resultPose);
+	}
 
-	Sample(Sample *parent, size_t index, Eigen::VectorXd delta, Eigen::VectorXd kernel, size_t simIndex): parent(parent)
-    {
-	Simulator &sim = simulators[simIndex];
-	sim.setPose(parent->resultPose, parent->resultVel);
-	this->delta = delta;
-	this->kernel = kernel;
-	for (size_t i = 0; i < 6; ++i)
-	    delta[i] = 0;
-	ref = bvh.frame[index] + delta;
-	//std::cout << sim.skeleton->getJoint(0)->getPositions() << std::endl;
-	if (sim.driveTo(ref, trajectory))
+	Sample(std::shared_ptr<Sample> parent, size_t index, Eigen::VectorXd delta, Eigen::VectorXd kernel, size_t simIndex): parent(parent)
 	{
-	    resultPose = sim.skeleton->getPositions();
-	    resultVel = sim.skeleton->getVelocities();
-	    cost = costFunc(sim.skeleton, index);
-	    totalCost = parent->totalCost + cost;
-	    accumCost = cost;
-	    if (parent != nullptr)
-		parent->update(height + 1, accumCost + parent->cost);
+	    Simulator &sim = simulators[simIndex];
+	    sim.setPose(parent->resultPose, parent->resultVel);
+	    this->delta = delta;
+	    this->kernel = kernel;
+	    for (size_t i = 0; i < 6; ++i)
+		delta[i] = 0;
+	    ref = bvh.frame[index] + delta;
+	    //std::cout << sim.skeleton->getJoint(0)->getPositions() << std::endl;
+	    if (sim.driveTo(ref, trajectory))
+	    {
+		resultPose = sim.skeleton->getPositions();
+		resultVel = sim.skeleton->getVelocities();
+		cost = costFunc(sim.skeleton, index);
+		totalCost = parent->totalCost + cost;
+		accumCost = cost;
+		if (parent != nullptr)
+		    parent->update(height + 1, accumCost + parent->cost);
+	    }
+	    else
+	    {
+		cost = NAN;
+		std::cerr << "NAN" << std::endl;
+	    }
 	}
-	else
-	{
-	    cost = NAN;
-	    std::cerr << "NAN" << std::endl;
-	}
-    }
 
 	std::vector<Eigen::VectorXd> getTarget()
 	{
 	    std::vector<Eigen::VectorXd> list;
 	    std::cout << cost << " ";
 	    list.push_back(ref);
-	    const Sample * ptr = parent;
+	    std::shared_ptr<const Sample> ptr = parent;
 	    while (ptr != nullptr && ptr->parent != nullptr)
 	    {
 		std::cout << ptr->cost << " ";
@@ -445,7 +446,7 @@ class Sample
 	    std::cout << cost << " ";
 	    for (auto it = trajectory.crbegin(); it != trajectory.crend(); ++it)
 		list.push_back(*it);
-	    const Sample * ptr = parent;
+	    std::shared_ptr<const Sample> ptr = parent;
 	    while (ptr != nullptr && ptr->parent != nullptr)
 	    {
 		std::cout << ptr->cost << " ";
@@ -462,6 +463,7 @@ class Sample
 	{
 	    return lhs.cost < rhs.cost;
 	}
+
     private:
 	void update(size_t height, double accumCost)
 	{
@@ -476,15 +478,24 @@ class Sample
 	}
 };
 
+class CostCmp
+{
+    public:
+	bool operator()(const std::shared_ptr<Sample> &lhs, const std::shared_ptr<Sample> &rhs)
+	{
+	    return *lhs < *rhs;
+	}
+};
+
 class SampleComparison
 {
     public:
-	bool operator()(const Sample &lhs, const Sample &rhs)
+	bool operator()(const std::shared_ptr<Sample> &lhs, const std::shared_ptr<Sample> &rhs)
 	{
-	    if (lhs.height != rhs.height)
-		return lhs.height < rhs.height;
+	    if (lhs->height != rhs->height)
+		return lhs->height < rhs->height;
 	    else
-		return rhs.accumCost < lhs.accumCost;
+		return rhs->accumCost < lhs->accumCost;
 	}
 };
 
@@ -602,13 +613,15 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     std::cout << "omp_get_max_threads() = " << omp_get_max_threads() << std::endl;
     for (size_t i = 0; i < omp_get_max_threads(); ++i)
 	simulators.push_back(Simulator());
-    std::vector<std::vector<Sample>> savedSamples;
-    std::vector<Sample> tmpList;
+    std::vector<std::vector<std::shared_ptr<Sample>>> savedSamples;
+    std::vector<std::vector<std::shared_ptr<Sample>>> backupSamples;
+    double backupMin = DBL_MAX;
+    std::vector<std::shared_ptr<Sample>> tmpList;
     // also need to set velocities
     // what's the rule when we use rotation vector?
     // assume that the first one is the root joint
     for (size_t i = 0; i < saveNum; ++i)
-	tmpList.push_back(Sample(startFrame));
+	tmpList.push_back(std::make_shared<Sample>(startFrame));
     //tmpList.push_back(Sample(bvh.frame[startFrame]));
     savedSamples.push_back(tmpList);
     size_t i_begin = 1, i_end;
@@ -620,17 +633,17 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	for (size_t i = i_begin; i < i_end && startFrame + i * groupNum < actualEnd; ++i)
 	{
 	    std::cout << startFrame + i * groupNum << std::endl;
-	    std::vector<Sample> &samples = savedSamples[i - 1];
-	    std::priority_queue<Sample> queue;
+	    std::vector<std::shared_ptr<Sample>> &samples = savedSamples[i - 1];
+	    std::priority_queue<std::shared_ptr<Sample>, std::vector<std::shared_ptr<Sample>>, CostCmp> queue;
 #pragma omp parallel for	
 	    for (size_t j = 0; j < samples.size(); ++j)
 	    {
-		Sample &sample = samples[j];
+		std::shared_ptr<Sample> &sample = samples[j];
 		for (size_t k = 0; k < sampleNum / samples.size(); ++k)
 		{
 		    Eigen::VectorXd kernel = cmaes[i].getSample();
 		    Eigen::VectorXd delta = transformation[i] * kernel;
-		    const Sample t = Sample(&sample, startFrame + i * groupNum, delta, kernel, omp_get_thread_num());
+		    std::shared_ptr<Sample> t = std::make_shared<Sample>(sample, startFrame + i * groupNum, delta, kernel, omp_get_thread_num());
 #pragma omp critical (queue_section)
 		    {
 			queue.push(t);
@@ -639,24 +652,24 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 		    }
 		}
 	    }
-	    std::vector<Sample> tmp;
+	    std::vector<std::shared_ptr<Sample>> tmp;
 	    while (!queue.empty())
 	    {
-		const Sample &t = queue.top();
-		if (!std::isnan(t.cost))
+		const std::shared_ptr<Sample> &t = queue.top();
+		if (!std::isnan(t->cost))
 		    tmp.push_back(queue.top());
 		queue.pop();
 	    }
-	    std::cout << tmp.back().cost << std::endl;
-	    if (tmp.back().cost > failThreshold)
+	    std::cout << tmp.back()->cost << std::endl;
+	    if (tmp.back()->cost > failThreshold)
 	    {
 		i_end = i;
 		std::cout << "fail" << std::endl;
 		break;
 	    }
-	    if (tmp.back().cost < minCost[i])
+	    if (tmp.back()->cost < minCost[i])
 	    {
-		minCost[i] = tmp.back().cost;
+		minCost[i] = tmp.back()->cost;
 		notImprove[i] = 0;
 	    }
 	    else
@@ -666,17 +679,46 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    else
 		savedSamples.push_back(tmp);
 	}
-	for (size_t i = i_begin; i < i_end; ++i)
+	std::shared_ptr<Sample> minSample = nullptr;
+	double min = DBL_MAX;
+	for (std::shared_ptr<Sample> &sample: savedSamples[i_end - 1])
 	{
-	    std::vector<Sample> &tmp = savedSamples[i];
-	    std::priority_queue<Sample, std::vector<Sample>, SampleComparison> tQueue(tmp.cbegin(), tmp.cend());
-	    Eigen::MatrixXd X(rank, saveNum);
-	    for (size_t j = 0; j < saveNum; ++j)
+	    if (sample->totalCost < min)
 	    {
-		X.col(j) = tQueue.top().kernel;
-		tQueue.pop();
+		min = sample->totalCost;
+		minSample = sample;
 	    }
-	    cmaes[i].update(X);
+	}
+	std::ofstream output;
+	output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(++trial) + ".txt");
+	std::cout << "trial: " << counter << " - " << trial << std::endl;
+	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(minSample->getTrajectory()))
+	    output << v.transpose() << std::endl;
+	output.close();
+	if (i_end > backupSamples.size() || (i_end == backupSamples.size() && min < backupMin))
+	{
+	    for (size_t i = i_begin; i < i_end; ++i)
+	    {
+		std::vector<std::shared_ptr<Sample>> &tmp = savedSamples[i];
+		std::priority_queue<std::shared_ptr<Sample>, std::vector<std::shared_ptr<Sample>>, SampleComparison> tQueue(tmp.cbegin(), tmp.cend());
+		Eigen::MatrixXd X(rank, saveNum);
+		for (size_t j = 0; j < saveNum; ++j)
+		{
+		    X.col(j) = tQueue.top()->kernel;
+		    tQueue.pop();
+		}
+		cmaes[i].update(X);
+	    }
+	    backupSamples.clear();
+	    for (size_t i = 0; i < i_end; ++i)
+		backupSamples.push_back(savedSamples[i]);
+	    backupMin = min;
+	}
+	else
+	{
+	    savedSamples.clear();
+	    for (auto i: backupSamples)
+		savedSamples.push_back(i);
 	}
 	std::cout << std::endl;
 	for (size_t i = 0; i < vectorSize; ++i)
@@ -695,22 +737,6 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	}
 	f_cov << std::endl;
 	f_mean << std::endl;
-	Sample *minSample = nullptr;
-	double min = DBL_MAX;
-	for (Sample &sample: savedSamples[i_end - 1])
-	{
-	    if (sample.totalCost < min)
-	    {
-		min = sample.totalCost;
-		minSample = &sample;
-	    }
-	}
-	std::ofstream output;
-	output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(++trial) + ".txt");
-	std::cout << "trial: " << trial << std::endl;
-	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(minSample->getTrajectory()))
-	    output << v.transpose() << std::endl;
-	output.close();
 	/*
 	   std::vector<Eigen::VectorXd> frame;
 	   std::vector<std::vector<Eigen::Vector3d>> force;
@@ -746,14 +772,14 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    ++i_begin;
 	}
     }
-    Sample *minSample = nullptr;
+    std::shared_ptr<Sample> minSample = nullptr;
     double min = DBL_MAX;
-    for (Sample &sample: savedSamples.back())
+    for (std::shared_ptr<Sample> sample: savedSamples.back())
     {
-	if (sample.totalCost < min)
+	if (sample->totalCost < min)
 	{
-	    min = sample.totalCost;
-	    minSample = &sample;
+	    min = sample->totalCost;
+	    minSample = sample;
 	}
     }
     
@@ -762,12 +788,12 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     {
 	size_t h = 0;
 	init_mean[i] = Eigen::VectorXd::Zero(rank);
-	for (const Sample &s: savedSamples[i])
+	for (const std::shared_ptr<Sample> &s: savedSamples[i])
 	{
-	    if (s.height >= 4)
+	    if (s->height >= 4)
 	    {
-		init_mean[i] += s.kernel * s.height;
-		h += s.height;
+		init_mean[i] += s->kernel * s->height;
+		h += s->height;
 	    }
 	}
 	if (h > 0)
