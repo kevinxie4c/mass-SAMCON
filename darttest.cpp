@@ -871,7 +871,7 @@ void setParameter(std::string parameter, std::string value)
     else if (parameter == "init_sigma")
 	init_sigma = std::stod(value);
     else if (parameter == "failThreshold")
-	failThreshold == std::stod(value);
+	failThreshold = std::stod(value);
     else if (parameter == "rank")
 	rank = std::stoi(value);
     else if (parameter == "scaleMassMatrix")
