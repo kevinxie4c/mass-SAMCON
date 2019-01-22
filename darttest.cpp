@@ -40,6 +40,7 @@ double wp= 5, wr = 3, we = 30, wb = 10;
 BVHData bvh;
 std::string bvhFileName = "walk.bvh";
 std::string outputFileName = "result.txt";
+std::string basedir = "default";
 size_t startFrame = 32;
 size_t endFrame = 300;
 double groundOffset = -0.03;
@@ -158,13 +159,24 @@ void setStateAt(size_t index, Eigen::VectorXd &pose, Eigen::VectorXd &vel)
     for (size_t i = 1; i < skeleton->getJoints().size(); ++i)
     {
 	Joint *joint = skeleton->getJoint(i);
-	Eigen::Vector3d omega = joint->getPositions();
+	Eigen::Vector3d omega;
+	if (joint->getPositions().rows() == 3)
+	    omega = joint->getPositions();
+	else
+	    omega = Eigen::Vector3d(joint->getPosition(0), 0, 0);
 	Joint *t_joint = t_skeleton->getJoint(i);
-	Eigen::Vector3d t_omega = t_joint->getPositions();
+	Eigen::Vector3d t_omega;
+	if (t_joint->getPositions().rows() == 3)
+	    t_omega = t_joint->getPositions();
+	else
+	    t_omega = Eigen::Vector3d(t_joint->getPosition(0), 0, 0);
 	Eigen::AngleAxisd r(omega.norm(), omega.normalized());
 	Eigen::AngleAxisd t_r(t_omega.norm(), t_omega.normalized());
 	Eigen::AngleAxisd diff_r(t_r * r.inverse());
-	joint->setVelocities(diff_r.axis() * (diff_r.angle() / frameTime));
+	if (joint->getPositions().rows() == 3)
+	    joint->setVelocities(diff_r.axis() * (diff_r.angle() / frameTime));
+	else
+	    joint->setVelocity(0, ((t_joint->getPosition(0) - joint->getPosition(0)) / frameTime));
     }
     pose = skeleton->getPositions();
     vel = skeleton->getVelocities();
@@ -213,8 +225,16 @@ void initCost(std::string filename)
 	    }
 	    else
 	    {
-		q.push_back(joint->getPositions());
-		omega.push_back(joint->getVelocities());
+		if (joint->getPositions().rows() == 3)
+		{
+		    q.push_back(joint->getPositions());
+		    omega.push_back(joint->getVelocities());
+		}
+		else
+		{
+		    q.push_back(Eigen::Vector3d(joint->getPosition(0), 0, 0));
+		    omega.push_back(Eigen::Vector3d(joint->getVelocity(0), 0, 0));
+		}
 	    }
 	}
 	target_q.push_back(q);
@@ -250,8 +270,16 @@ double costFunc(const SkeletonPtr skeleton, size_t index)
 	}
 	else
 	{
-	    q = joint->getPositions();
-	    omega= joint->getVelocities();
+	    if (joint->getPositions().rows() == 3)
+	    {
+		q = joint->getPositions();
+		omega= joint->getVelocities();
+	    }
+	    else
+	    {
+		q = Eigen::Vector3d(joint->getPosition(0), 0, 0);
+		omega = Eigen::Vector3d(joint->getVelocity(0), 0, 0);
+	    }
 	}
 	Eigen::Quaterniond quat1(Eigen::AngleAxisd(q.norm(), q.normalized()));
 	Eigen::Quaterniond quat2(Eigen::AngleAxisd(qr.norm(), qr.normalized()));
@@ -812,8 +840,10 @@ void setParameter(std::string parameter, std::string value)
 {
     if (parameter == "bvhFileName")
 	bvhFileName = value;
-    if (parameter == "outputFileName")
+    else if (parameter == "outputFileName")
 	outputFileName = value;
+    else if (parameter == "basedir")
+	basedir = value;
     else if (parameter == "startFrame")
 	startFrame = std::stoi(value);
     else if (parameter == "endFrame")
@@ -915,6 +945,12 @@ int main(int argc, char* argv[])
     bvh.loadBVH(bvhFileName);
     setMassFor(bvh);
 
+    std::ofstream output;
+    output.open("result.txt0_0.txt");   // for test
+    for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(bvh.frame))
+	output << v.transpose() << std::endl;
+    output.close();
+
     for (size_t i = 0; i < bvh.skeleton->getJoints().size(); ++i)
     {
 	std::cout << bvh.skeleton->getJoints()[i]->getName() << std::endl;
@@ -925,6 +961,9 @@ int main(int argc, char* argv[])
 	}
     }
     std::cout << rootIndex << std::endl;
+    std::cout << "DOFs:" << std::endl;
+    for (auto it: bvh.skeleton->getDofs())
+	std::cout << it->getName() << std::endl;
     for (size_t i = 0; i < bvh.skeleton->getBodyNodes().size(); ++i)
     {
 	std::cout << bvh.skeleton->getBodyNodes()[i]->getName() << std::endl;
@@ -968,7 +1007,6 @@ int main(int argc, char* argv[])
     std::vector<Eigen::VectorXd> ref;
     for (size_t i = 0; i < frame.size(); ++i)
 	ref.push_back(bvh.frame[startFrame + i]);
-    std::ofstream output;
     output.open(outputFileName);
     for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(frame))
 	output << v.transpose() << std::endl;

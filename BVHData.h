@@ -33,6 +33,8 @@ private:
 
 	double cm_per_m = 100.0;
 
+	static std::vector<std::string> hingeJointList;
+
 	int parseRoot(std::istream& input);
 
 	int parseIdentifier(std::istream& input, std::string& identifier);

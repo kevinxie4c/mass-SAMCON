@@ -50,15 +50,45 @@ std::vector<Eigen::VectorXd> BVHData::frameToEulerAngle() const
 std::vector<Eigen::VectorXd> BVHData::frameToEulerAngle(std::vector<Eigen::VectorXd> targetFrame) const
 {
 	static double pi = acos(-1);
-	std::vector<Eigen::VectorXd> result = targetFrame;
-	for (Eigen::VectorXd &pose: result)
+	std::vector<Eigen::VectorXd> list = targetFrame;
+	std::vector<Eigen::VectorXd> result;
+	for (Eigen::VectorXd &pose: list)
 	{
+		Eigen::VectorXd vec(getChannelSize());
 		pose.segment(0, 3).swap(pose.segment(3, 3)); // swap position and rotation of the root
 		pose.segment(0, 3) *= cm_per_m;
+		vec.segment(0, 3) = pose.segment(0, 3);
+		/*
 		for (size_t i = 3; i < getChannelSize(); i += 3)
 		{
 			pose.segment(i, 3) = BallJoint::convertToRotation(pose.segment(i, 3)).eulerAngles(eulerAngleOrder[i], eulerAngleOrder[i + 1], eulerAngleOrder[i + 2]) / (2.0 * pi) * 360.0;
 		}
+		*/
+		size_t index = 3;
+		for (size_t i = 3; i < getChannelSize(); i += 3)
+		{
+			std::string jointName = skeleton->getJoints()[i / 3 - 1]->getName();
+			bool isHinge = false;
+			for (std::string &s: hingeJointList)
+				if (jointName.find(s) != std::string::npos)
+				{
+					isHinge = true;
+					break;
+				}
+			if (isHinge)
+			{
+				vec[i] = 0;
+				vec[i + 1] = pose[index] / (2.0 * pi) * 360.0;
+				vec[i + 2] = 0;
+				index += 1;
+			}
+			else
+			{
+				vec.segment(i, 3) = BallJoint::convertToRotation(pose.segment(index, 3)).eulerAngles(eulerAngleOrder[i], eulerAngleOrder[i + 1], eulerAngleOrder[i + 2]) / (2.0 * pi) * 360.0;
+				index += 3;
+			}
+		}
+		result.push_back(vec);
 	}
 	return result;
 }
@@ -275,6 +305,8 @@ int BVHData::parseJoint(std::istream& input, const BodyNodePtr& parent, const st
 	return 0;
 }
 
+std::vector<std::string> BVHData::hingeJointList = { "Elbow", "Knee" };
+
 int BVHData::parseFrame(std::istream& input)
 {
 	/*
@@ -308,6 +340,7 @@ int BVHData::parseFrame(std::istream& input)
 	for (size_t i = 0; i < frameNum; ++i)
 	{
 		Eigen::VectorXd t(getChannelSize());
+		Eigen::VectorXd q(skeleton->getDofs().size());
 		for (size_t j = 0; j < getChannelSize(); ++j)
 		{
 			double x;
@@ -326,21 +359,41 @@ int BVHData::parseFrame(std::istream& input)
 				return 0;
 			}
 		}
+		size_t index = 3;
 		for (size_t j = 3; j < getChannelSize(); j += 3)
 		{
-			Eigen::AngleAxisd r0 = Eigen::AngleAxisd(t[j], axises[eulerAngleOrder[j]]);
-			Eigen::AngleAxisd r1 = Eigen::AngleAxisd(t[j + 1], axises[eulerAngleOrder[j + 1]]);
-			Eigen::AngleAxisd r2 = Eigen::AngleAxisd(t[j + 2], axises[eulerAngleOrder[j + 2]]);
-			Eigen::Matrix3d rotation = (r0 * r1 * r2).toRotationMatrix();
-			Eigen::Vector3d positions = BallJoint::convertToPositions(rotation);
-			t[j] = positions[0];
-			t[j + 1] = positions[1];
-			t[j + 2] = positions[2];
+			bool isHinge = false;
+			std::string jointName = skeleton->getJoints()[j / 3 - 1]->getName();
+			for (std::string &s: hingeJointList)
+				if (jointName.find(s) != std::string::npos)
+				{
+					isHinge = true;
+					break;
+				}
+			if (isHinge)
+			{
+				q[index] = t[j + 1];
+				index += 1;
+			}
+			else
+			{
+				Eigen::AngleAxisd r0 = Eigen::AngleAxisd(t[j], axises[eulerAngleOrder[j]]);
+				Eigen::AngleAxisd r1 = Eigen::AngleAxisd(t[j + 1], axises[eulerAngleOrder[j + 1]]);
+				Eigen::AngleAxisd r2 = Eigen::AngleAxisd(t[j + 2], axises[eulerAngleOrder[j + 2]]);
+				Eigen::Matrix3d rotation = (r0 * r1 * r2).toRotationMatrix();
+				Eigen::Vector3d positions = BallJoint::convertToPositions(rotation);
+				q[index] = positions[0];
+				q[index + 1] = positions[1];
+				q[index + 2] = positions[2];
+				index += 3;
+			}
 		}
+		for (size_t j = 0; j < 3; ++j)
+		    q[j] = t[j];
 		// root node: rotation, translation
 		for (size_t j = 0; j < 3; ++j)
-			std::swap(t[j], t[j + 3]);
-		frame.push_back(t);
+			std::swap(q[j], q[j + 3]);
+		frame.push_back(q);
 	}
 	return 1;
 }
@@ -355,11 +408,28 @@ BodyNodePtr BVHData::addBody(const SkeletonPtr& skeleton, const BodyNodePtr& par
 	freeJointProperties.mName = name + "_joint";
 	freeJointProperties.mT_ParentBodyToJoint.translation() = Eigen::Vector3d(x, y, z);
 
+	RevoluteJoint::Properties revoluteJointProperties;
+	revoluteJointProperties.mName = name + "_joint";
+	revoluteJointProperties.mT_ParentBodyToJoint.translation() = Eigen::Vector3d(x, y, z);
+	revoluteJointProperties.mAxis = Eigen::Vector3d::UnitX();
+
 	BodyNodePtr bn;
 	if (parent == nullptr) 
 		bn = skeleton->createJointAndBodyNodePair<FreeJoint>(parent, freeJointProperties, BodyNode::AspectProperties(name)).second;	// Assume that root is a free joint
 	else
-		bn = skeleton->createJointAndBodyNodePair<BallJoint>(parent, ballJointProperties, BodyNode::AspectProperties(name)).second;
+	{
+		bool isHinge = false;
+		for (std::string &s: BVHData::hingeJointList)
+			if (name.find(s) != std::string::npos)
+			{
+				isHinge = true;
+				break;
+			}
+		if (isHinge)
+			bn = skeleton->createJointAndBodyNodePair<RevoluteJoint>(parent, revoluteJointProperties, BodyNode::AspectProperties(name)).second;
+		else
+			bn = skeleton->createJointAndBodyNodePair<BallJoint>(parent, ballJointProperties, BodyNode::AspectProperties(name)).second;
+	}
 	bn->setFrictionCoeff(1e20);
 	bn->setRestitutionCoeff(0);
 
