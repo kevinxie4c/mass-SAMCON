@@ -55,6 +55,7 @@ double timeStep = 0.001;
 //double timeStep = 0.008333;
 double init_cov = 0.008;
 size_t rank = 10;
+size_t dRank = 5;
 double scaleMassMatrix = 0.3;
 std::string cov_fileName = "default_cov.txt";
 std::string stiffness_fileName = "default_stiffness.txt";
@@ -600,14 +601,13 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 {
     static size_t counter = 0;
     static std::vector<Eigen::VectorXd> init_mean;
-    static std::vector<Eigen::MatrixXd> transformation;
+    std::vector<Eigen::MatrixXd> transformation;
     ++counter;
     std::ofstream f_cov;
     std::ofstream f_mean;
     f_cov.open(std::string("cov_") + std::to_string(counter) + ".txt");
     f_mean.open(std::string("mean_") + std::to_string(counter) + ".txt");
     size_t actualEnd = std::min(bvh.frame.size(), endFrame);
-    size_t dim = bvh.getChannelSize();
     size_t vectorSize = (actualEnd - startFrame) / groupNum + 1;
     if (counter == 1)
     {
@@ -630,8 +630,15 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 		    D.row(j).swap(D.row(j + 1));
 		    B.col(j).swap(B.col(j + 1));
 		}
-	if (counter == 1)
-	    transformation.push_back(B.leftCols(rank) * D.head(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
+	//transformation.push_back(B.leftCols(rank) * D.head(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
+	transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * D.head(rank + 6).tail(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
+	//transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * scaleMassMatrix);
+	Eigen::VectorXd v = Eigen::VectorXd::Zero(rank);
+	if (counter > 1)
+	{
+	    v.head(rank - dRank) = init_mean[i];
+	    init_mean[i] = v;
+	}
 	cmaes.push_back(WeirdCMAES(rank, sampleNum, saveNum, init_sigma, init_mean[i]));
     }
     std::vector<size_t> generation(vectorSize, 0);
@@ -830,6 +837,7 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    init_mean[i] = Eigen::VectorXd::Zero(rank);
     }
     init_sigma *= 0.7;
+    rank += dRank;
     f_cov.close();
     f_mean.close();
 
@@ -904,6 +912,8 @@ void setParameter(std::string parameter, std::string value)
 	failThreshold = std::stod(value);
     else if (parameter == "rank")
 	rank = std::stoi(value);
+    else if (parameter == "dRank")
+	dRank = std::stoi(value);
     else if (parameter == "scaleMassMatrix")
 	scaleMassMatrix = std::stod(value);
 }
