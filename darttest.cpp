@@ -39,6 +39,8 @@ double wp= 5, wr = 3, we = 30, wb = 10;
 
 BVHData bvh;
 std::string bvhFileName = "walk.bvh";
+std::string geometryConfigFileName = "";
+std::string hingeJointListFileName = "";
 std::string outputFileName = "result.txt";
 std::string basedir = "default";
 size_t startFrame = 32;
@@ -62,6 +64,7 @@ std::string stiffness_fileName = "default_stiffness.txt";
 std::string damping_fileName = "default_damping.txt";
 std::string mass_fileName = "default_mass.txt";
 bool stablePD = true;
+bool zeroInitialVelocities = true;
 bool useSampleNumAsLambda = false;
 double init_sigma = 0.1;
 std::vector<double> init_cov_list;
@@ -69,10 +72,9 @@ std::vector<double> stiffness_list;
 std::vector<double> damping_list;
 std::vector<double> mass_list;
 size_t stepPerFrame = frameTime / timeStep;
-size_t rootIndex;
+size_t rootIndex = 0;
 std::vector<size_t> endEffectorIndex;
-std::string rootName = "Hip_joint";
-std::vector<std::string> endEffectorName = { "Wrist", "Head", "Ankle" };
+std::vector<std::string> endEffectorName = { "Wrist", "Head", "Ankle", "Foot" };
 
 SkeletonPtr createFloor()
 {
@@ -139,6 +141,7 @@ void setStateAt(size_t index, Eigen::VectorXd &pose, Eigen::VectorXd &vel)
     // assume that the first one is the root joint
     {
 	// root joint
+	/*
 	Joint *joint = skeleton->getJoint(0);
 	Eigen::Vector6d q = joint->getPositions();
 	Eigen::Vector3d p = q.tail<3>(); // assume that last 3 is translation
@@ -154,11 +157,19 @@ void setStateAt(size_t index, Eigen::VectorXd &pose, Eigen::VectorXd &vel)
 	// rotation, translation
 	//v << diff_r.axis() * (diff_r.angle() / frameTime), (t_p - p) / frameTime;
 	v << 0, 0, 0, (t_p - p) / frameTime;
+	*/
+	
+	Joint *joint = skeleton->getJoint(0);
+	Joint *t_joint = t_skeleton->getJoint(0);
+	Eigen::VectorXd q1 = joint->getPositions();
+	Eigen::VectorXd q2 = t_joint->getPositions();
+	Eigen::VectorXd v = joint->getPositionDifferences(q2, q1) / frameTime;
 	joint->setVelocities(v);
     }
     // other joints
     for (size_t i = 1; i < skeleton->getJoints().size(); ++i)
     {
+	/*
 	Joint *joint = skeleton->getJoint(i);
 	Eigen::Vector3d omega;
 	if (joint->getPositions().rows() == 3)
@@ -178,6 +189,13 @@ void setStateAt(size_t index, Eigen::VectorXd &pose, Eigen::VectorXd &vel)
 	    joint->setVelocities(diff_r.axis() * (diff_r.angle() / frameTime));
 	else
 	    joint->setVelocity(0, ((t_joint->getPosition(0) - joint->getPosition(0)) / frameTime));
+	*/
+	Joint *joint = skeleton->getJoint(i);
+	Joint *t_joint = t_skeleton->getJoint(i);
+	Eigen::VectorXd q1 = joint->getPositions();
+	Eigen::VectorXd q2 = t_joint->getPositions();
+	Eigen::VectorXd v = joint->getPositionDifferences(q2, q1) / frameTime;
+	joint->setVelocities(v);
     }
     pose = skeleton->getPositions();
     vel = skeleton->getVelocities();
@@ -193,7 +211,7 @@ void setMassFor(BVHData bvh)
 void initCost(std::string filename)
 {
     BVHData target;
-    target.loadBVH(filename);
+    target.loadBVH(filename, geometryConfigFileName, hingeJointListFileName);
     setMassFor(target);
     for (size_t index = 0; index < target.frame.size(); ++index)
     {
@@ -422,6 +440,8 @@ class Sample
 	Sample(size_t index): cost(0), parent(nullptr)
 	{
 	    setStateAt(index, resultPose, resultVel);
+	    if (zeroInitialVelocities)
+		resultVel = Eigen::VectorXd::Zero(resultPose.rows());
 	    trajectory.push_back(resultPose);
 	}
 
@@ -458,7 +478,8 @@ class Sample
 	    std::cout << cost << " ";
 	    list.push_back(ref);
 	    std::shared_ptr<const Sample> ptr = parent;
-	    while (ptr != nullptr && ptr->parent != nullptr)
+	    //while (ptr != nullptr && ptr->parent != nullptr)
+	    while (ptr != nullptr)
 	    {
 		std::cout << ptr->cost << " ";
 		list.push_back(ptr->ref);
@@ -476,7 +497,8 @@ class Sample
 	    for (auto it = trajectory.crbegin(); it != trajectory.crend(); ++it)
 		list.push_back(*it);
 	    std::shared_ptr<const Sample> ptr = parent;
-	    while (ptr != nullptr && ptr->parent != nullptr)
+	    //while (ptr != nullptr && ptr->parent != nullptr)
+	    while (ptr != nullptr)
 	    {
 		std::cout << ptr->cost << " ";
 		for (auto it = ptr->trajectory.crbegin(); it != ptr->trajectory.crend(); ++it)
@@ -658,6 +680,10 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     for (size_t i = 0; i < saveNum; ++i)
 	tmpList.push_back(std::make_shared<Sample>(startFrame));
     //tmpList.push_back(Sample(bvh.frame[startFrame]));
+    std::cout << "initial pose:" << std::endl;
+    std::cout << tmpList[0]->resultPose << std::endl;
+    std::cout << "initial vel:" << std::endl;
+    std::cout << tmpList[0]->resultVel << std::endl;
     savedSamples.push_back(tmpList);
     size_t i_begin = 1, i_end;
     while (startFrame + i_begin * (groupNum + 1) < actualEnd)
@@ -848,6 +874,10 @@ void setParameter(std::string parameter, std::string value)
 {
     if (parameter == "bvhFileName")
 	bvhFileName = value;
+    else if (parameter == "geometryConfigFileName")
+	geometryConfigFileName = value;
+    else if (parameter == "hingeJointListFileName")
+	hingeJointListFileName = value;
     else if (parameter == "outputFileName")
 	outputFileName = value;
     else if (parameter == "basedir")
@@ -898,6 +928,8 @@ void setParameter(std::string parameter, std::string value)
 	gravity = std::stod(value);
     else if (parameter == "stablePD")
 	stablePD = std::stoi(value);
+    else if (parameter == "zeroInitialVelocities")
+	zeroInitialVelocities = std::stoi(value);
     else if (parameter == "ERP")
 	ERP = std::stod(value);
     else if (parameter == "CFM")
@@ -952,7 +984,7 @@ int main(int argc, char* argv[])
     mass_list = readVectorDoubleFrom(mass_fileName);
     stepPerFrame = frameTime / timeStep;
 
-    bvh.loadBVH(bvhFileName);
+    bvh.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName);
     setMassFor(bvh);
 
     std::ofstream output;
@@ -961,16 +993,7 @@ int main(int argc, char* argv[])
 	output << v.transpose() << std::endl;
     output.close();
 
-    for (size_t i = 0; i < bvh.skeleton->getJoints().size(); ++i)
-    {
-	std::cout << bvh.skeleton->getJoints()[i]->getName() << std::endl;
-	if (bvh.skeleton->getJoints()[i]->getName() == rootName)
-	{
-	    rootIndex = i;
-	    break;
-	}
-    }
-    std::cout << rootIndex << std::endl;
+    std::cout << "rootIndex: " << rootIndex << std::endl;
     std::cout << "DOFs:" << std::endl;
     for (auto it: bvh.skeleton->getDofs())
 	std::cout << it->getName() << std::endl;
@@ -984,6 +1007,7 @@ int main(int argc, char* argv[])
 		break;
 	    }
     }
+    std::cout << "endEffectorIndex: " << std::endl;
     for (int i: endEffectorIndex)
 	std::cout << i << std::endl;
     initCost(bvhFileName);
