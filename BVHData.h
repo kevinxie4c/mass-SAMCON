@@ -27,7 +27,7 @@ class BVHData
 	std::vector<Eigen::VectorXd> frame;
 	std::vector<int> eulerAngleOrder;
 
-	int loadBVH(const std::string& filename, const std::string& configFileName = "", const std::string& hingeJointFileName = "");
+	int loadBVH(const std::string& filename, const std::string& configFileName = "", const std::string& hingeJointFileName = "", double scale = 100.0);
 
 	int parseBVH(std::istream& input);
 
@@ -41,7 +41,7 @@ class BVHData
 
     private:
 	size_t m_channelSize = 0;
-	double cm_per_m = 100.0;
+	double scale;
 
 	const std::vector<Eigen::Vector3d> axises = { Eigen::Vector3d::UnitX(), Eigen::Vector3d::UnitY(), Eigen::Vector3d::UnitZ() };
 

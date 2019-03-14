@@ -3,8 +3,9 @@
 #include <cfloat>
 #include <utility>
 
-int BVHData::loadBVH(const std::string& filename, const std::string& configFileName, const std::string& hingeJointFileName)
+int BVHData::loadBVH(const std::string& filename, const std::string& configFileName, const std::string& hingeJointFileName, double scale)
 {
+    this->scale = scale;
     std::ifstream input;
     if (!configFileName.empty())
     {
@@ -76,19 +77,19 @@ int BVHData::loadGeometryConfig(std::istream& input)
 	{
 	    case 0:
 		if (list[0] == "sphere")
-		    shape = std::shared_ptr<Shape>(new SphereShape(std::stod(list[1]) / cm_per_m));
+		    shape = std::shared_ptr<Shape>(new SphereShape(std::stod(list[1]) / this->scale));
 		else if (list[0] == "cube")
-		    shape = std::shared_ptr<Shape>(new BoxShape(Eigen::Vector3d(std::stod(list[1]) / cm_per_m, std::stod(list[2]) / cm_per_m, std::stod(list[3]) / cm_per_m)));
+		    shape = std::shared_ptr<Shape>(new BoxShape(Eigen::Vector3d(std::stod(list[1]) / this->scale, std::stod(list[2]) / this->scale, std::stod(list[3]) / this->scale)));
 		else if (list[0] == "cylinder")
-		    shape = std::shared_ptr<Shape>(new CylinderShape(std::stod(list[1]) / cm_per_m, std::stod(list[2]) / cm_per_m));
+		    shape = std::shared_ptr<Shape>(new CylinderShape(std::stod(list[1]) / this->scale, std::stod(list[2]) / this->scale));
 		break;
 	    case 1:
 		    parent = line;
 		break;
 	    case 2:
-		    tl.x() = std::stod(list[0]) / cm_per_m;
-		    tl.y() = std::stod(list[1]) / cm_per_m;
-		    tl.z() = std::stod(list[2]) / cm_per_m;
+		    tl.x() = std::stod(list[0]) / this->scale;
+		    tl.y() = std::stod(list[1]) / this->scale;
+		    tl.z() = std::stod(list[2]) / this->scale;
 		break;
 	    case 3:
 		    rot = Eigen::AngleAxisd(std::stod(list[0]), Eigen::Vector3d::UnitX())
@@ -132,7 +133,7 @@ std::vector<Eigen::VectorXd> BVHData::frameToEulerAngle(std::vector<Eigen::Vecto
     {
 	Eigen::VectorXd vec(getChannelSize());
 	pose.segment(0, 3).swap(pose.segment(3, 3)); // swap position and rotation of the root
-	pose.segment(0, 3) *= cm_per_m;
+	pose.segment(0, 3) *= this->scale;
 	vec.segment(0, 3) = pose.segment(0, 3);
 	/*
        for (size_t i = 3; i < getChannelSize(); i += 3)
@@ -278,7 +279,7 @@ int BVHData::parseJoint(std::istream& input, const BodyNodePtr& parent, const st
 	    }
 	    std::clog << "OFFSET " << x << " " << y << " " << z << std::endl;
 	    //bn = addBody(skeleton, parent, name, x, y, z);
-	    bn = addBody(skeleton, parent, name, x / cm_per_m, y / cm_per_m, z / cm_per_m);
+	    bn = addBody(skeleton, parent, name, x / this->scale, y / this->scale, z / this->scale);
 	} 
 	else if (tag == "CHANNELS")
 	{
@@ -357,7 +358,7 @@ int BVHData::parseJoint(std::istream& input, const BodyNodePtr& parent, const st
 		return 0;
 	    }
 	    //setGeometry(bn, x, y, z, true);
-	    setGeometry(bn, x / cm_per_m, y / cm_per_m, z / cm_per_m, true);
+	    setGeometry(bn, x / this->scale, y / this->scale, z / this->scale, true);
 	    if (!parseToken(input, "}"))
 		return 0;
 	}
@@ -422,7 +423,7 @@ int BVHData::parseFrame(std::istream& input)
 		if (j >= 3) // assume first 3 channels are position and the rest are rotation
 		    x = x / 360.0 * 2 * pi;	// degree to radius
 		else
-		    x = x / cm_per_m; // for test
+		    x = x / this->scale; // for test
 		t[j] = x;
 	    }
 	    else

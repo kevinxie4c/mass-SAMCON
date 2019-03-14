@@ -1,4 +1,5 @@
 #include <dart/dart.hpp>
+#include <dart/gui/gui.hpp>
 #include <dart/collision/ode/OdeCollisionDetector.hpp>
 #include <vector>
 #include <queue>
@@ -8,6 +9,7 @@
 #include <memory>
 #include <cassert>
 #include <cfloat>
+#include <pthread.h>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Eigenvalues>
@@ -38,11 +40,16 @@ Eigen::MatrixXd mKp, mKd;
 double wp= 5, wr = 3, we = 30, wb = 10;
 
 BVHData bvh;
+BVHData bvh4window;
+BVHData bvhRef;
+std::vector<Eigen::Vector3d> com; // center of mass
+std::vector<Eigen::Vector3d> mmt; // momentum
 std::string bvhFileName = "walk.bvh";
 std::string geometryConfigFileName = "";
 std::string hingeJointListFileName = "";
 std::string outputFileName = "result.txt";
 std::string basedir = "default";
+double scale = 100.0;
 size_t startFrame = 32;
 size_t endFrame = 300;
 double groundOffset = -0.03;
@@ -211,7 +218,7 @@ void setMassFor(BVHData bvh)
 void initCost(std::string filename)
 {
     BVHData target;
-    target.loadBVH(filename, geometryConfigFileName, hingeJointListFileName);
+    target.loadBVH(filename, geometryConfigFileName, hingeJointListFileName, scale);
     setMassFor(target);
     for (size_t index = 0; index < target.frame.size(); ++index)
     {
@@ -380,7 +387,7 @@ class Simulator
 	}
 
 	const double largeNum = 100;
-	bool driveTo(Eigen::VectorXd ref, std::vector<Eigen::VectorXd> &resultTrajectory)
+	bool driveTo(Eigen::VectorXd ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> com, std::vector<Eigen::Vector3d> mmt)
 	{
 	    for (size_t i = 0; i < groupNum; ++i)
 	    {
@@ -389,7 +396,7 @@ class Simulator
 		    Eigen::VectorXd q = skeleton->getPositions();
 		    Eigen::VectorXd dq = skeleton->getVelocities();
 		    Eigen::MatrixXd invM = (skeleton->getMassMatrix() + mKd * skeleton->getTimeStep()).inverse();
-		    Eigen::VectorXd p = -mKp * (q + dq * skeleton->getTimeStep() - ref);
+		    Eigen::VectorXd p = -mKp * skeleton->getPositionDifferences(q + dq * skeleton->getTimeStep(), ref);
 		    Eigen::VectorXd d = -mKd * dq;
 		    Eigen::VectorXd qddot = invM * (-skeleton->getCoriolisAndGravityForces() + p + d + skeleton->getConstraintForces());
 		    Eigen::VectorXd force = p + d - mKd * qddot * skeleton->getTimeStep();
@@ -405,7 +412,7 @@ class Simulator
 		    {
 			Eigen::VectorXd q = skeleton->getPositions();
 			Eigen::VectorXd dq = skeleton->getVelocities();
-			Eigen::VectorXd p = -mKp * (q - ref);
+			Eigen::VectorXd p = -mKp * skeleton->getPositionDifferences(q, ref);
 			Eigen::VectorXd d = -mKd * dq;
 			Eigen::VectorXd force = p + d;
 			skeleton->setForces(force);
@@ -413,6 +420,9 @@ class Simulator
 		    }
 		}
 		resultTrajectory.push_back(skeleton->getPositions());
+		const BodyNode *bn = skeleton->getRootBodyNode();
+		com.push_back(skeleton->getCOM());
+		mmt.push_back(bn->getCOMLinearVelocity());
 	    }
 	    return true;
 	}
@@ -434,6 +444,8 @@ class Sample
 	double accumCost = 0; // accumulative cost of the best path from the sample to the leaves
 	size_t height = 0;
 	std::vector<Eigen::VectorXd> trajectory;
+	std::vector<Eigen::Vector3d> com;
+	std::vector<Eigen::Vector3d> mmt;
 
 	//Sample(Eigen::VectorXd pose): cost(0), parent(nullptr), resultPose(pose), resultVel(Eigen::VectorXd::Zero(bvh.getChannelSize())) {}
 
@@ -443,6 +455,8 @@ class Sample
 	    if (zeroInitialVelocities)
 		resultVel = Eigen::VectorXd::Zero(resultPose.rows());
 	    trajectory.push_back(resultPose);
+	    com.push_back(Eigen::Vector3d::Zero());
+	    mmt.push_back(Eigen::Vector3d::Zero());
 	}
 
 	Sample(std::shared_ptr<Sample> parent, size_t index, Eigen::VectorXd delta, Eigen::VectorXd kernel, size_t simIndex): parent(parent)
@@ -455,7 +469,7 @@ class Sample
 		delta[i] = 0;
 	    ref = bvh.frame[index] + delta;
 	    //std::cout << sim.skeleton->getJoint(0)->getPositions() << std::endl;
-	    if (sim.driveTo(ref, trajectory))
+	    if (sim.driveTo(ref, trajectory, com, mmt))
 	    {
 		resultPose = sim.skeleton->getPositions();
 		resultVel = sim.skeleton->getVelocities();
@@ -490,7 +504,24 @@ class Sample
 	    return list;
 	}
 
-	std::vector<Eigen::VectorXd> getTrajectory()
+	std::vector<std::shared_ptr<const Sample>> getMinSamplesList()
+	{
+	    std::vector<std::shared_ptr<const Sample>> list;
+	    std::cout << cost << " ";
+	    list.push_back(std::shared_ptr<const Sample>(this));
+	    std::shared_ptr<const Sample> ptr = parent;
+	    //while (ptr != nullptr && ptr->parent != nullptr)
+	    while (ptr != nullptr)
+	    {
+		std::cout << ptr->cost << " ";
+		list.push_back(ptr);
+		ptr = ptr->parent;
+	    }
+	    std::cout << std::endl;
+	    return list;
+	}
+
+	std::vector<Eigen::VectorXd> getTrajectory() // should use getMinSamplesList instead
 	{
 	    std::vector<Eigen::VectorXd> list;
 	    std::cout << cost << " ";
@@ -503,6 +534,23 @@ class Sample
 		std::cout << ptr->cost << " ";
 		for (auto it = ptr->trajectory.crbegin(); it != ptr->trajectory.crend(); ++it)
 		    list.push_back(*it);
+		ptr = ptr->parent;
+	    }
+	    std::cout << std::endl;
+	    std::reverse(std::begin(list), std::end(list));
+	    return list;
+	}
+
+	std::vector<Eigen::VectorXd> getRef() // should use getMinSamplesList instead
+	{
+	    std::vector<Eigen::VectorXd> list;
+	    for (size_t i = 0; i < 2 * groupNum; ++i)
+		list.push_back(ref);
+	    std::shared_ptr<const Sample> ptr = parent;
+	    while (ptr != nullptr && ptr->parent != nullptr)
+	    {
+		for (size_t i = 0; i < groupNum; ++i)
+		    list.push_back(ptr->ref);
 		ptr = ptr->parent;
 	    }
 	    std::cout << std::endl;
@@ -653,8 +701,8 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 		    B.col(j).swap(B.col(j + 1));
 		}
 	//transformation.push_back(B.leftCols(rank) * D.head(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
-	transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * D.head(rank + 6).tail(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
-	//transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * scaleMassMatrix);
+	//transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * D.head(rank + 6).tail(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
+	transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * scaleMassMatrix);
 	Eigen::VectorXd v = Eigen::VectorXd::Zero(rank);
 	if (counter > 1)
 	{
@@ -753,7 +801,26 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	std::ofstream output;
 	output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(++trial) + ".txt");
 	std::cout << "trial: " << counter << " - " << trial << std::endl;
-	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(minSample->getTrajectory()))
+	bvh4window.frame.clear();
+	for (std::shared_ptr<const Sample> s: minSample->getMinSamplesList())
+	{
+	    for (auto it: s->trajectory)
+		bvh4window.frame.push_back(it);
+	    for (auto it: s->com)
+		com.push_back(it);
+	    for (auto it: s->mmt)
+		mmt.push_back(it);
+	}
+	bvhRef.frame = minSample->getRef();
+	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(minSample->getTrajectory())) // used bvh4window.frame instead?
+	    output << v.transpose() << std::endl;
+	output.close();
+	output.open("com" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
+	for (const Eigen::VectorXd &v: com)
+	    output << v.transpose() << std::endl;
+	output.close();
+	output.open("mmt" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
+	for (const Eigen::VectorXd &v: mmt)
 	    output << v.transpose() << std::endl;
 	output.close();
 	if (i_end > backupSamples.size() || (i_end == backupSamples.size() && min < backupMin))
@@ -882,6 +949,8 @@ void setParameter(std::string parameter, std::string value)
 	outputFileName = value;
     else if (parameter == "basedir")
 	basedir = value;
+    else if (parameter == "scale")
+	scale = std::stod(value);
     else if (parameter == "startFrame")
 	startFrame = std::stoi(value);
     else if (parameter == "endFrame")
@@ -962,6 +1031,51 @@ std::vector<double> readVectorDoubleFrom(std::string fileName)
     input.close();
 }
 
+class MyWindow: public dart::gui::SimWindow
+{
+    public:
+	bool toggle = false;
+	int index = 0;
+	void keyboard(unsigned char key, int x, int y) override
+	{
+	    switch (key)
+	    {
+		case 'q':
+		    --index;
+		    break;
+		case 'w':
+		    ++index;
+		    break;
+		case 'a':
+		    index -= 10;
+		    break;
+		case 's':
+		    index += 10;
+		    break;
+		case 'p':
+		    toggle = !toggle;
+		    break;
+		default:
+		    SimWindow::keyboard(key, x, y);
+	    }
+	    while (index < 0)
+		index += bvh4window.frame.size();
+	    index = index % bvh4window.frame.size();
+	    bvh4window.setPositionAt(index);
+	    //bvhRef.setPositionAt(index);
+	}
+	
+	void timeStepping() override
+	{
+	    if (toggle)
+	    {
+		++index;
+		index = index % bvh4window.frame.size();
+		bvh4window.setPositionAt(index);
+		//bvhRef.setPositionAt(index);
+	    }
+	}
+};
 
 int main(int argc, char* argv[])
 {
@@ -984,8 +1098,25 @@ int main(int argc, char* argv[])
     mass_list = readVectorDoubleFrom(mass_fileName);
     stepPerFrame = frameTime / timeStep;
 
-    bvh.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName);
+    bvh.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName, scale);
+    bvh4window.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName, scale);
+    //bvhRef.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName, scale);
     setMassFor(bvh);
+    MyWindow window;
+    WorldPtr world(new World);
+    world->addSkeleton(bvh4window.skeleton);
+    //world->addSkeleton(bvhRef.skeleton);
+    world->setTimeStep(0.1);
+    window.setWorld(world);
+    glutInit(&argc, argv);
+    window.initWindow(640, 480, "test");
+    std::cout << "q: frame - 1" << std::endl;
+    std::cout << "w: frame + 1" << std::endl;
+    std::cout << "a: frame - 10" << std::endl;
+    std::cout << "s: frame - 10" << std::endl;
+    std::cout << "p: play" << std::endl;
+    pthread_t thread;
+    pthread_create(&thread, NULL, (void* (*)(void*))glutMainLoop, NULL);
 
     std::ofstream output;
     output.open("result.txt0_0.txt");   // for test
