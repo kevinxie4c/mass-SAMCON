@@ -1,4 +1,5 @@
 #include <dart/dart.hpp>
+#include <dart/gui/gui.hpp>
 #include <dart/collision/ode/OdeCollisionDetector.hpp>
 #include <vector>
 #include <queue>
@@ -73,6 +74,7 @@ std::string mass_fileName = "default_mass.txt";
 bool stablePD = true;
 bool zeroInitialVelocities = true;
 bool useSampleNumAsLambda = false;
+bool showWindow = false;
 double init_sigma = 0.1;
 std::vector<double> init_cov_list;
 std::vector<double> stiffness_list;
@@ -1031,6 +1033,8 @@ void setParameter(std::string parameter, std::string value)
 	stablePD = std::stoi(value);
     else if (parameter == "zeroInitialVelocities")
 	zeroInitialVelocities = std::stoi(value);
+    else if (parameter == "showWindow")
+	showWindow = std::stoi(value);
     else if (parameter == "ERP")
 	ERP = std::stod(value);
     else if (parameter == "CFM")
@@ -1136,21 +1140,24 @@ int main(int argc, char* argv[])
     bvh4window.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName, scale);
     //bvhRef.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName, scale);
     setMassFor(bvh);
+    pthread_t thread;
     MyWindow window;
     WorldPtr world(new World);
-    world->addSkeleton(bvh4window.skeleton);
-    //world->addSkeleton(bvhRef.skeleton);
-    world->setTimeStep(0.1);
-    window.setWorld(world);
-    glutInit(&argc, argv);
-    window.initWindow(640, 480, "test");
-    std::cout << "q: frame - 1" << std::endl;
-    std::cout << "w: frame + 1" << std::endl;
-    std::cout << "a: frame - 10" << std::endl;
-    std::cout << "s: frame - 10" << std::endl;
-    std::cout << "p: play" << std::endl;
-    pthread_t thread;
-    pthread_create(&thread, NULL, (void* (*)(void*))glutMainLoop, NULL);
+    if (showWindow)
+    {
+	world->addSkeleton(bvh4window.skeleton);
+	//world->addSkeleton(bvhRef.skeleton);
+	world->setTimeStep(0.1);
+	window.setWorld(world);
+	glutInit(&argc, argv);
+	window.initWindow(640, 480, "test");
+	std::cout << "q: frame - 1" << std::endl;
+	std::cout << "w: frame + 1" << std::endl;
+	std::cout << "a: frame - 10" << std::endl;
+	std::cout << "s: frame - 10" << std::endl;
+	std::cout << "p: play" << std::endl;
+	pthread_create(&thread, NULL, (void* (*)(void*))glutMainLoop, NULL);
+    }
 
     std::ofstream output;
     output.open("result.txt0_0.txt");   // for test
