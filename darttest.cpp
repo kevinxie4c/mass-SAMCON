@@ -671,6 +671,7 @@ void simulate(const BVHData &bvh, std::vector<Eigen::VectorXd> reference, std::v
 std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 {
     static size_t counter = 0;
+    static size_t dims = bvh.skeleton->getDofs().size();
     static std::vector<Eigen::VectorXd> init_mean;
     std::vector<Eigen::MatrixXd> transformation;
     ++counter;
@@ -948,18 +949,30 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     {
 	size_t h = 0;
 	init_mean[i] = Eigen::VectorXd::Zero(rank);
+	Eigen::VectorXd mean = Eigen::VectorXd::Zero(dims);
 	for (const std::shared_ptr<Sample> &s: savedSamples[i])
 	{
 	    if (s->height >= 4)
 	    {
 		init_mean[i] += s->kernel * s->height;
 		h += s->height;
+		mean += s->delta * s->height;
 	    }
 	}
 	if (h > 0)
+	{
 	    init_mean[i] /= h;
+	    mean /= h;
+	}
 	else
+	{
 	    init_mean[i] = Eigen::VectorXd::Zero(rank);
+	    mean = Eigen::VectorXd::Zero(dims);
+	}
+	std::ofstream output;
+	output.open("mean" + std::to_string(counter) + "_" + std::to_string(i) + ".txt");
+	output << mean.transpose() << std::endl;
+	output.close();
     }
     init_sigma *= 0.7;
     rank += dRank;
