@@ -54,10 +54,12 @@ public:
 	Eigen::VectorXd getSample()
 	{
 		using namespace Eigen;
+		/*
 		#pragma omp critical (counteval_section)
 		{
 			++counteval;
 		}
+		*/
 		ArrayXd randn(N);
 		for (size_t i = 0; i < N; ++i) randn[i] = dist(gen);
 		return xmean + sigma * B * (D.array() * randn).matrix();
@@ -68,6 +70,9 @@ public:
 		using namespace Eigen;
 		xold = xmean;
 		xmean = arx * weights;
+
+		// assume that getSample is called sampleNum times
+		counteval += lambda;
 
 		ps = (1 - cs) * ps + sqrt(cs * (2 - cs) * mueff) * invsqrtC * (xmean - xold) / sigma;
 		double hsig = ps.array().square().sum() / (1 - pow(1 - cs, 2.0 * counteval / lambda)) / N < 2 + 4 / (N + 1) ? 1 : 0;

@@ -1,5 +1,4 @@
 #include <dart/dart.hpp>
-#include <dart/gui/gui.hpp>
 #include <dart/collision/ode/OdeCollisionDetector.hpp>
 #include <vector>
 #include <queue>
@@ -56,6 +55,7 @@ double groundOffset = -0.03;
 size_t sampleNum = 1200, saveNum = 400;
 size_t groupNum = 5;
 size_t slidingWindow = 50;
+size_t updateWindow =  50;
 size_t trialMin = 5, trialMax = 20;
 size_t notImproveMax = 5;
 double goodEnough = 5.0, failThreshold = 20.0;
@@ -387,7 +387,7 @@ class Simulator
 	}
 
 	const double largeNum = 100;
-	bool driveTo(Eigen::VectorXd ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> com, std::vector<Eigen::Vector3d> mmt)
+	bool driveTo(Eigen::VectorXd ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt)
 	{
 	    for (size_t i = 0; i < groupNum; ++i)
 	    {
@@ -430,7 +430,7 @@ class Simulator
 
 std::vector<Simulator> simulators;
 
-class Sample
+class Sample: public std::enable_shared_from_this<Sample>
 {
     public:
 	double cost;
@@ -508,7 +508,7 @@ class Sample
 	{
 	    std::vector<std::shared_ptr<const Sample>> list;
 	    std::cout << cost << " ";
-	    list.push_back(std::shared_ptr<const Sample>(this));
+	    list.push_back(shared_from_this());
 	    std::shared_ptr<const Sample> ptr = parent;
 	    //while (ptr != nullptr && ptr->parent != nullptr)
 	    while (ptr != nullptr)
@@ -518,6 +518,7 @@ class Sample
 		ptr = ptr->parent;
 	    }
 	    std::cout << std::endl;
+	    std::reverse(std::begin(list), std::end(list));
 	    return list;
 	}
 
@@ -714,6 +715,8 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     std::vector<size_t> generation(vectorSize, 0);
     std::vector<size_t> notImprove(vectorSize, 0);
     std::vector<double> minCost(vectorSize, DBL_MAX);
+    std::vector<size_t> maxHeight(vectorSize, 0);
+    std::vector<double> minAccCost(vectorSize, DBL_MAX);
     std::cout << "_OPENMP " << _OPENMP << std::endl;
     std::cout << "omp_get_max_threads() = " << omp_get_max_threads() << std::endl;
     for (size_t i = 0; i < omp_get_max_threads(); ++i)
@@ -734,6 +737,7 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     std::cout << tmpList[0]->resultVel << std::endl;
     savedSamples.push_back(tmpList);
     size_t i_begin = 1, i_end;
+    size_t trialTimes = 0;
     while (startFrame + i_begin * (groupNum + 1) < actualEnd)
     {
 	i_end = i_begin + slidingWindow;
@@ -802,6 +806,8 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(++trial) + ".txt");
 	std::cout << "trial: " << counter << " - " << trial << std::endl;
 	bvh4window.frame.clear();
+	com.clear();
+	mmt.clear();
 	for (std::shared_ptr<const Sample> s: minSample->getMinSamplesList())
 	{
 	    for (auto it: s->trajectory)
@@ -825,17 +831,28 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	output.close();
 	if (i_end > backupSamples.size() || (i_end == backupSamples.size() && min < backupMin))
 	{
-	    for (size_t i = i_begin; i < i_end; ++i)
+	    for (size_t i = i_begin; i < i_begin + updateWindow && i < i_end; ++i) // CMA-ES
 	    {
 		std::vector<std::shared_ptr<Sample>> &tmp = savedSamples[i];
 		std::priority_queue<std::shared_ptr<Sample>, std::vector<std::shared_ptr<Sample>>, SampleComparison> tQueue(tmp.cbegin(), tmp.cend());
 		Eigen::MatrixXd X(rank, saveNum);
+		size_t h = 0;
+		double cost = 0;
 		for (size_t j = 0; j < saveNum; ++j)
 		{
-		    X.col(j) = tQueue.top()->kernel;
+		    std::shared_ptr<Sample> s = tQueue.top();
+		    h += s->height;
+		    cost += s->accumCost;
+		    X.col(j) = s->kernel;
 		    tQueue.pop();
 		}
-		cmaes[i].update(X);
+		std::cout << i << " " << h << " " << cost << std::endl;
+		if (h > maxHeight[i] || (h == maxHeight[i] && cost < minAccCost[i])) // do CMA-ES only if the samples are better
+		{
+		    maxHeight[i] = h;
+		    minAccCost[i] = cost;
+		    cmaes[i].update(X);
+		}
 	    }
 	    backupSamples.clear();
 	    for (size_t i = 0; i < i_end; ++i)
@@ -848,6 +865,12 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    for (auto i: backupSamples)
 		savedSamples.push_back(i);
 	}
+	std::cout << std::endl;
+	for (size_t i = 0; i < vectorSize; ++i)
+	    std::cout << maxHeight[i] << " ";
+	std::cout << std::endl;
+	for (size_t i = 0; i < vectorSize; ++i)
+	    std::cout << minAccCost[i] << " ";
 	std::cout << std::endl;
 	for (size_t i = 0; i < vectorSize; ++i)
 	{
@@ -894,7 +917,16 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	   output << v.transpose() << std::endl;
 	   output.close();
 	 */
-	if (generation[i_begin] < trialMin) continue;
+	//if (generation[i_begin] < trialMin) continue;
+	if (generation[i_begin] < trialMin)
+	{
+	    if (++trialTimes > trialMin)
+	    {
+		++i_begin;
+		trialTimes = 0;
+	    }
+	    continue;
+	}
 	while ((startFrame + i_begin * (groupNum + 1) < actualEnd) && (generation[i_begin] > trialMax || notImprove[i_begin] > notImproveMax || minCost[i_begin] < goodEnough))
 	{
 	    ++i_begin;
@@ -1005,6 +1037,8 @@ void setParameter(std::string parameter, std::string value)
 	CFM = std::stod(value);
     else if (parameter == "slidingWindow")
 	slidingWindow = std::stoi(value);
+    else if (parameter == "updateWindow")
+	updateWindow = std::stoi(value);
     else if (parameter == "useSampleNumAsLambda")
 	useSampleNumAsLambda = std::stoi(value);
     else if (parameter == "init_sigma")
@@ -1031,51 +1065,6 @@ std::vector<double> readVectorDoubleFrom(std::string fileName)
     input.close();
 }
 
-class MyWindow: public dart::gui::SimWindow
-{
-    public:
-	bool toggle = false;
-	int index = 0;
-	void keyboard(unsigned char key, int x, int y) override
-	{
-	    switch (key)
-	    {
-		case 'q':
-		    --index;
-		    break;
-		case 'w':
-		    ++index;
-		    break;
-		case 'a':
-		    index -= 10;
-		    break;
-		case 's':
-		    index += 10;
-		    break;
-		case 'p':
-		    toggle = !toggle;
-		    break;
-		default:
-		    SimWindow::keyboard(key, x, y);
-	    }
-	    while (index < 0)
-		index += bvh4window.frame.size();
-	    index = index % bvh4window.frame.size();
-	    bvh4window.setPositionAt(index);
-	    //bvhRef.setPositionAt(index);
-	}
-	
-	void timeStepping() override
-	{
-	    if (toggle)
-	    {
-		++index;
-		index = index % bvh4window.frame.size();
-		bvh4window.setPositionAt(index);
-		//bvhRef.setPositionAt(index);
-	    }
-	}
-};
 
 int main(int argc, char* argv[])
 {
@@ -1102,21 +1091,7 @@ int main(int argc, char* argv[])
     bvh4window.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName, scale);
     //bvhRef.loadBVH(bvhFileName, geometryConfigFileName, hingeJointListFileName, scale);
     setMassFor(bvh);
-    MyWindow window;
-    WorldPtr world(new World);
-    world->addSkeleton(bvh4window.skeleton);
     //world->addSkeleton(bvhRef.skeleton);
-    world->setTimeStep(0.1);
-    window.setWorld(world);
-    glutInit(&argc, argv);
-    window.initWindow(640, 480, "test");
-    std::cout << "q: frame - 1" << std::endl;
-    std::cout << "w: frame + 1" << std::endl;
-    std::cout << "a: frame - 10" << std::endl;
-    std::cout << "s: frame - 10" << std::endl;
-    std::cout << "p: play" << std::endl;
-    pthread_t thread;
-    pthread_create(&thread, NULL, (void* (*)(void*))glutMainLoop, NULL);
 
     std::ofstream output;
     output.open("result.txt0_0.txt");   // for test
