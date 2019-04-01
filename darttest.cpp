@@ -52,6 +52,7 @@ std::string basedir = "default";
 double scale = 100.0;
 size_t startFrame = 32;
 size_t endFrame = 300;
+size_t actualEnd;
 double groundOffset = -0.03;
 size_t sampleNum = 1200, saveNum = 400;
 size_t groupNum = 5;
@@ -74,6 +75,7 @@ std::string mass_fileName = "default_mass.txt";
 bool stablePD = true;
 bool zeroInitialVelocities = true;
 bool useSampleNumAsLambda = false;
+bool useAFT = false; // approximating feedback torque
 bool showWindow = false;
 double init_sigma = 0.1;
 std::vector<double> init_cov_list;
@@ -84,6 +86,7 @@ size_t stepPerFrame = frameTime / timeStep;
 size_t rootIndex = 0;
 std::vector<size_t> endEffectorIndex;
 std::vector<std::string> endEffectorName = { "Wrist", "Head", "Ankle", "Foot" };
+std::vector<Eigen::VectorXd> aftOffset;
 
 SkeletonPtr createFloor()
 {
@@ -470,6 +473,8 @@ class Sample: public std::enable_shared_from_this<Sample>
 	    for (size_t i = 0; i < 6; ++i)
 		delta[i] = 0;
 	    ref = bvh.frame[index] + delta;
+	    if (useAFT)
+		ref = sim.skeleton->getPositionDifferences(ref, -aftOffset[index]);
 	    //std::cout << sim.skeleton->getJoint(0)->getPositions() << std::endl;
 	    if (sim.driveTo(ref, trajectory, com, mmt))
 	    {
@@ -681,7 +686,6 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     std::ofstream f_mean;
     f_cov.open(std::string("cov_") + std::to_string(counter) + ".txt");
     f_mean.open(std::string("mean_") + std::to_string(counter) + ".txt");
-    size_t actualEnd = std::min(bvh.frame.size(), endFrame);
     size_t vectorSize = (actualEnd - startFrame) / groupNum + 1;
     if (counter == 1)
     {
@@ -1058,6 +1062,8 @@ void setParameter(std::string parameter, std::string value)
 	updateWindow = std::stoi(value);
     else if (parameter == "useSampleNumAsLambda")
 	useSampleNumAsLambda = std::stoi(value);
+    else if (parameter == "useAFT")
+	useAFT = std::stoi(value);
     else if (parameter == "init_sigma")
 	init_sigma = std::stod(value);
     else if (parameter == "failThreshold")
@@ -1214,6 +1220,26 @@ int main(int argc, char* argv[])
     std::vector<std::vector<Eigen::Vector3d>> force;
     std::vector<Eigen::VectorXd> target;
     target.push_back(bvh.frame[startFrame]);
+    
+    actualEnd = std::min(bvh.frame.size(), endFrame);
+    if (useAFT)
+    {
+	Simulator sim;
+	aftOffset = std::vector<Eigen::VectorXd>(bvh.frame.size());
+	aftOffset[startFrame] = Eigen::VectorXd::Zero(bvh.skeleton->getDofs().size());
+	for (size_t i = startFrame + groupNum; i < actualEnd; i += groupNum)
+	{
+	    Eigen::VectorXd pose, velo;
+	    std::vector<Eigen::VectorXd> trajectory;
+	    std::vector<Eigen::Vector3d> com, mmt;
+	    setStateAt(i - groupNum, pose, velo);
+	    sim.setPose(pose, velo);
+	    sim.driveTo(bvh.frame[i], trajectory, com, mmt);
+	    setStateAt(i, pose, velo);
+	    aftOffset[i] = bvh.skeleton->getPositionDifferences(pose, sim.skeleton->getPositions());
+	}
+    }
+
     for (size_t i = 0; i < 4; ++i)
 	getTarget(bvh);
     std::vector<Eigen::VectorXd> tmp = getTarget(bvh);
