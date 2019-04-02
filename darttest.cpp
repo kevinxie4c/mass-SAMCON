@@ -680,6 +680,7 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
     static size_t counter = 0;
     static size_t dims = bvh.skeleton->getDofs().size();
     static std::vector<Eigen::VectorXd> init_mean;
+    static double sigma_max = init_sigma;
     std::vector<Eigen::MatrixXd> transformation;
     ++counter;
     std::ofstream f_cov;
@@ -709,6 +710,7 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 		    B.col(j).swap(B.col(j + 1));
 		}
 	//transformation.push_back(B.leftCols(rank) * D.head(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
+	//transformation.push_back(B.leftCols(rank) * scaleMassMatrix);
 	//transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * D.head(rank + 6).tail(rank).array().sqrt().matrix().asDiagonal() * scaleMassMatrix);
 	transformation.push_back(B.leftCols(rank + 6).rightCols(rank) * scaleMassMatrix);
 	Eigen::VectorXd v = Eigen::VectorXd::Zero(rank);
@@ -859,6 +861,8 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 		    maxHeight[i] = h;
 		    minAccCost[i] = cost;
 		    cmaes[i].update(X);
+		    if (cmaes[i].sigma > sigma_max)
+			cmaes[i].sigma = sigma_max;
 		}
 	    }
 	    backupSamples.clear();
@@ -1136,6 +1140,7 @@ class MyWindow: public dart::gui::SimWindow
 
 int main(int argc, char* argv[])
 {
+    std::cout << "inertia tensor vectors SAMCON" << std::endl;
     if (argc != 1)
     {
 	std::ifstream taskFile;
