@@ -77,6 +77,7 @@ bool zeroInitialVelocities = true;
 bool useSampleNumAsLambda = false;
 bool useAFT = false; // approximating feedback torque
 bool showWindow = false;
+bool onlyLogAndFinal = false;
 double init_sigma = 0.1;
 std::vector<double> init_cov_list;
 std::vector<double> stiffness_list;
@@ -87,6 +88,7 @@ size_t rootIndex = 0;
 std::vector<size_t> endEffectorIndex;
 std::vector<std::string> endEffectorName = { "Wrist", "Head", "Ankle", "Foot" };
 std::vector<Eigen::VectorXd> aftOffset;
+std::string taskFileName;
 
 SkeletonPtr createFloor()
 {
@@ -812,7 +814,8 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    }
 	}
 	std::ofstream output;
-	output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(++trial) + ".txt");
+	if (!onlyLogAndFinal)
+	    output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(++trial) + ".txt");
 	std::cout << "trial: " << counter << " - " << trial << std::endl;
 	bvh4window.frame.clear();
 	com.clear();
@@ -826,18 +829,21 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    for (auto it: s->mmt)
 		mmt.push_back(it);
 	}
-	bvhRef.frame = minSample->getRef();
-	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(minSample->getTrajectory())) // used bvh4window.frame instead?
-	    output << v.transpose() << std::endl;
-	output.close();
-	output.open("com" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
-	for (const Eigen::VectorXd &v: com)
-	    output << v.transpose() << std::endl;
-	output.close();
-	output.open("mmt" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
-	for (const Eigen::VectorXd &v: mmt)
-	    output << v.transpose() << std::endl;
-	output.close();
+	if (!onlyLogAndFinal)
+	{
+	    bvhRef.frame = minSample->getRef();
+	    for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(minSample->getTrajectory())) // used bvh4window.frame instead?
+		output << v.transpose() << std::endl;
+	    output.close();
+	    output.open("com" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
+	    for (const Eigen::VectorXd &v: com)
+		output << v.transpose() << std::endl;
+	    output.close();
+	    output.open("mmt" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
+	    for (const Eigen::VectorXd &v: mmt)
+		output << v.transpose() << std::endl;
+	    output.close();
+	}
 	if (i_end > backupSamples.size() || (i_end == backupSamples.size() && min < backupMin))
 	{
 	    for (size_t i = i_begin; i < i_begin + updateWindow && i < i_end; ++i) // CMA-ES
@@ -979,15 +985,24 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    init_mean[i] = Eigen::VectorXd::Zero(rank);
 	    mean = Eigen::VectorXd::Zero(dims);
 	}
-	std::ofstream output;
-	output.open("mean" + std::to_string(counter) + "_" + std::to_string(i) + ".txt");
-	output << mean.transpose() << std::endl;
-	output.close();
+	if (!onlyLogAndFinal)
+	{
+	    std::ofstream output;
+	    output.open("mean" + std::to_string(counter) + "_" + std::to_string(i) + ".txt");
+	    output << mean.transpose() << std::endl;
+	    output.close();
+	}
     }
     init_sigma *= 0.7;
     rank += dRank;
     f_cov.close();
     f_mean.close();
+
+    std::ofstream output;
+    output.open(taskFileName + std::to_string(counter) + ".txt");
+    for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(minSample->getTrajectory()))
+	output << v.transpose() << std::endl;
+    output.close();
 
     return minSample->getTarget();
 }
@@ -1056,6 +1071,8 @@ void setParameter(std::string parameter, std::string value)
 	zeroInitialVelocities = std::stoi(value);
     else if (parameter == "showWindow")
 	showWindow = std::stoi(value);
+    else if (parameter == "onlyLogAndFinal")
+	onlyLogAndFinal = std::stoi(value);
     else if (parameter == "ERP")
 	ERP = std::stod(value);
     else if (parameter == "CFM")
@@ -1140,15 +1157,20 @@ class MyWindow: public dart::gui::SimWindow
 
 int main(int argc, char* argv[])
 {
+    std::cout << "mass SAMCON" << std::endl;
     std::cout << "inertia tensor vectors SAMCON" << std::endl;
     if (argc != 1)
     {
 	std::ifstream taskFile;
+	taskFileName = argv[1];
 	taskFile.open(argv[1]);
 	std::string parameter;
 	std::string value;
 	while (taskFile >> parameter >> value)
+	{
+	    std::cout << parameter << " = " << value << std::endl;
 	    setParameter(parameter, value);
+	}
 	taskFile.close();
     }
     dart::constraint::ContactConstraint::setErrorReductionParameter(ERP);
@@ -1184,10 +1206,13 @@ int main(int argc, char* argv[])
     }
 
     std::ofstream output;
-    output.open("result.txt0_0.txt");   // for test
-    for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(bvh.frame))
-	output << v.transpose() << std::endl;
-    output.close();
+    if (!onlyLogAndFinal)
+    {
+	output.open("result.txt0_0.txt");   // for test
+	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(bvh.frame))
+	    output << v.transpose() << std::endl;
+	output.close();
+    }
 
     std::cout << "rootIndex: " << rootIndex << std::endl;
     std::cout << "DOFs:" << std::endl;
@@ -1253,33 +1278,36 @@ int main(int argc, char* argv[])
 	for (size_t i = 0; i < groupNum; ++i)
 	    target.push_back(v);
     }
-    simulate(bvh, tmp, frame, force);
-    std::vector<Eigen::VectorXd> ref;
-    for (size_t i = 0; i < frame.size(); ++i)
-	ref.push_back(bvh.frame[startFrame + i]);
-    output.open(outputFileName);
-    for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(frame))
-	output << v.transpose() << std::endl;
-    output.close();
-    output.open(outputFileName + ".raw.txt");
-    for (const Eigen::VectorXd &v: frame)
-	output << v.transpose() << std::endl;
-    output.close();
-    output.open(outputFileName + ".force.txt");
-    output << force.size() << std::endl;
-    for (const std::vector<Eigen::Vector3d> &list: force)
+    if (!onlyLogAndFinal)
     {
-	output << list.size() << std::endl;
-	for (const Eigen::Vector3d &v: list)
-	    output << v << std::endl;
+	simulate(bvh, tmp, frame, force);
+	std::vector<Eigen::VectorXd> ref;
+	for (size_t i = 0; i < frame.size(); ++i)
+	    ref.push_back(bvh.frame[startFrame + i]);
+	output.open(outputFileName);
+	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(frame))
+	    output << v.transpose() << std::endl;
+	output.close();
+	output.open(outputFileName + ".raw.txt");
+	for (const Eigen::VectorXd &v: frame)
+	    output << v.transpose() << std::endl;
+	output.close();
+	output.open(outputFileName + ".force.txt");
+	output << force.size() << std::endl;
+	for (const std::vector<Eigen::Vector3d> &list: force)
+	{
+	    output << list.size() << std::endl;
+	    for (const Eigen::Vector3d &v: list)
+		output << v << std::endl;
+	}
+	output.close();
+	output.open(outputFileName + ".target.txt");
+	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(target))
+	    output << v.transpose() << std::endl;
+	output.close();
+	output.open(outputFileName + ".ref.txt");
+	for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(ref))
+	    output << v.transpose() << std::endl;
+	output.close();
     }
-    output.close();
-    output.open(outputFileName + ".target.txt");
-    for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(target))
-	output << v.transpose() << std::endl;
-    output.close();
-    output.open(outputFileName + ".ref.txt");
-    for (const Eigen::VectorXd &v: bvh.frameToEulerAngle(ref))
-	output << v.transpose() << std::endl;
-    output.close();
 }
