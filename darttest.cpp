@@ -74,6 +74,7 @@ std::string damping_fileName = "default_damping.txt";
 std::string mass_fileName = "default_mass.txt";
 bool stablePD = true;
 bool zeroInitialVelocities = true;
+bool zeroInitialAngularVelocities = true;
 bool useSampleNumAsLambda = false;
 bool useAFT = false; // approximating feedback torque
 bool showWindow = false;
@@ -178,6 +179,8 @@ void setStateAt(size_t index, Eigen::VectorXd &pose, Eigen::VectorXd &vel)
 	Eigen::VectorXd q1 = joint->getPositions();
 	Eigen::VectorXd q2 = t_joint->getPositions();
 	Eigen::VectorXd v = joint->getPositionDifferences(q2, q1) / frameTime;
+	if (zeroInitialAngularVelocities)
+	    v.head(3) = Eigen::Vector3d::Zero();
 	joint->setVelocities(v);
     }
     // other joints
@@ -814,8 +817,9 @@ std::vector<Eigen::VectorXd> getTarget(const BVHData &bvh)
 	    }
 	}
 	std::ofstream output;
+	++trial;
 	if (!onlyLogAndFinal)
-	    output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(++trial) + ".txt");
+	    output.open(outputFileName + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
 	std::cout << "trial: " << counter << " - " << trial << std::endl;
 	bvh4window.frame.clear();
 	com.clear();
@@ -1069,6 +1073,8 @@ void setParameter(std::string parameter, std::string value)
 	stablePD = std::stoi(value);
     else if (parameter == "zeroInitialVelocities")
 	zeroInitialVelocities = std::stoi(value);
+    else if (parameter == "zeroInitialAngularVelocities")
+	zeroInitialAngularVelocities = std::stoi(value);
     else if (parameter == "showWindow")
 	showWindow = std::stoi(value);
     else if (parameter == "onlyLogAndFinal")
