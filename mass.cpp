@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
 	    rounds = stoi(argv[3]);
 	taskFileName = argv[1];
     }
+    cout << "useMass = " << useMass << endl;
     Config::load(taskFileName);
     Utility::init();
     vector<VectorXd> frame(Utility::mbvh.frame.cbegin() + Config::startFrame, Utility::mbvh.frame.cend());
