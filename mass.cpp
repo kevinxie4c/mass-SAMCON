@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     {
 	if (argc > 4)
 	{
-	    cout << argv[0] << " [bvh_file] [use_mass] [rounds]" << endl;
+	    cout << argv[0] << " [task_file] [use_mass] [rounds]" << endl;
 	    exit(0);
 	}
 	if (argc >= 3)
