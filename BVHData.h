@@ -1,3 +1,6 @@
+#ifndef BVHDATA_H
+#define BVHDATA_H
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -23,9 +26,19 @@ class MyShapeNode
 class BVHData
 {
     public:
+	// data
+	
 	SkeletonPtr skeleton;
 	std::vector<Eigen::VectorXd> frame;
 	std::vector<int> eulerAngleOrder;
+
+	// function
+
+	BVHData() = default;
+
+	BVHData(const BVHData &other);
+
+	BVHData& operator=(const BVHData &other) = delete;
 
 	int loadBVH(const std::string& filename, const std::string& configFileName = "", const std::string& hingeJointFileName = "", double scale = 100.0);
 
@@ -39,15 +52,21 @@ class BVHData
 
 	std::vector<Eigen::VectorXd> frameToEulerAngle(std::vector<Eigen::VectorXd> targetFrame) const;
 
+	std::vector<Eigen::VectorXd> eulerAngleToFrame(std::vector<Eigen::VectorXd> rawFrame) const;
+
     private:
+	// data
+	
 	size_t m_channelSize = 0;
 	double scale;
 
-	const std::vector<Eigen::Vector3d> axises = { Eigen::Vector3d::UnitX(), Eigen::Vector3d::UnitY(), Eigen::Vector3d::UnitZ() };
+	static const std::vector<Eigen::Vector3d> axises;
 
 	std::map<std::string, std::vector<MyShapeNode>> geometryConfig;
 
 	std::map<std::string, int> hingeJoints;
+
+	// function
 
 	int loadGeometryConfig(std::istream &input);
 
@@ -75,3 +94,5 @@ class BVHData
 
 	static std::vector<std::string> split(std::string s);
 };
+
+#endif

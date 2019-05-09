@@ -1,3 +1,6 @@
+#ifndef WEIRDCMAES
+#define WEIRDCMAES
+
 #include <cmath>
 #include <algorithm>
 #include <random>
@@ -94,3 +97,5 @@ public:
 		}
 	}
 };
+
+#endif

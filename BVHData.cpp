@@ -3,6 +3,13 @@
 #include <cfloat>
 #include <utility>
 
+const std::vector<Eigen::Vector3d> BVHData::axises = { Eigen::Vector3d::UnitX(), Eigen::Vector3d::UnitY(), Eigen::Vector3d::UnitZ() };
+
+BVHData::BVHData(const BVHData &other): frame(other.frame), eulerAngleOrder(other.eulerAngleOrder), m_channelSize(other.m_channelSize), scale(other.scale), geometryConfig(other.geometryConfig), hingeJoints(other.hingeJoints)
+{
+    skeleton = other.skeleton->clone();
+}
+
 int BVHData::loadBVH(const std::string& filename, const std::string& configFileName, const std::string& hingeJointFileName, double scale)
 {
     this->scale = scale;
@@ -163,6 +170,57 @@ std::vector<Eigen::VectorXd> BVHData::frameToEulerAngle(std::vector<Eigen::Vecto
 	    }
 	}
 	result.push_back(vec);
+    }
+    return result;
+}
+
+std::vector<Eigen::VectorXd> BVHData::eulerAngleToFrame(std::vector<Eigen::VectorXd> rawFrame) const
+{
+    std::vector<Eigen::VectorXd> result;
+    for (size_t i = 0; i < rawFrame.size(); ++i)
+    {
+	Eigen::VectorXd t(getChannelSize());
+	Eigen::VectorXd q(skeleton->getDofs().size());
+	for (size_t j = 0; j < getChannelSize(); ++j)
+	{
+	    double x = rawFrame[i][j];
+	    static double pi = acos(-1);
+	    if (j >= 3) // assume first 3 channels are position and the rest are rotation
+		x = x / 360.0 * 2 * pi;	// degree to radius
+	    else
+		x = x / this->scale; // for test
+	    t[j] = x;
+	}
+	size_t index = 3;
+	for (size_t j = 3; j < getChannelSize(); j += 3)
+	{
+	    std::string jointName = skeleton->getJoints()[j / 3 - 1]->getName();
+	    Eigen::AngleAxisd r0 = Eigen::AngleAxisd(t[j], axises[eulerAngleOrder[j]]);
+	    Eigen::AngleAxisd r1 = Eigen::AngleAxisd(t[j + 1], axises[eulerAngleOrder[j + 1]]);
+	    Eigen::AngleAxisd r2 = Eigen::AngleAxisd(t[j + 2], axises[eulerAngleOrder[j + 2]]);
+	    Eigen::AngleAxisd r(r0 * r1 * r2);
+	    if (hingeJoints.find(jointName) != hingeJoints.end())
+	    {
+		double angle = (r.angle() * r.axis()).dot(axises[hingeJoints.at(jointName)]);
+		q[index] = angle;
+		index += 1;
+	    }
+	    else
+	    {
+		Eigen::Matrix3d rotation = r.toRotationMatrix();
+		Eigen::Vector3d positions = BallJoint::convertToPositions(rotation);
+		q[index] = positions[0];
+		q[index + 1] = positions[1];
+		q[index + 2] = positions[2];
+		index += 3;
+	    }
+	}
+	for (size_t j = 0; j < 3; ++j)
+	    q[j] = t[j];
+	// root node: rotation, translation
+	for (size_t j = 0; j < 3; ++j)
+	    std::swap(q[j], q[j + 3]);
+	result.push_back(q);
     }
     return result;
 }
@@ -410,61 +468,24 @@ int BVHData::parseFrame(std::istream& input)
 	std::cerr << "parse frame time failed" << std::endl;
 	return 0;
     }
+    std::vector<Eigen::VectorXd> rawFrame;
     for (size_t i = 0; i < frameNum; ++i)
     {
 	Eigen::VectorXd t(getChannelSize());
-	Eigen::VectorXd q(skeleton->getDofs().size());
 	for (size_t j = 0; j < getChannelSize(); ++j)
 	{
 	    double x;
 	    if (input >> x)
-	    {
-		static double pi = acos(-1);
-		if (j >= 3) // assume first 3 channels are position and the rest are rotation
-		    x = x / 360.0 * 2 * pi;	// degree to radius
-		else
-		    x = x / this->scale; // for test
 		t[j] = x;
-	    }
 	    else
 	    {
 		std::cerr << "parse frame failed" << std::endl;
 		return 0;
 	    }
 	}
-	size_t index = 3;
-	for (size_t j = 3; j < getChannelSize(); j += 3)
-	{
-	    std::string jointName = skeleton->getJoints()[j / 3 - 1]->getName();
-	    if (hingeJoints.find(jointName) != hingeJoints.end())
-	    {
-		size_t k;
-		for (k = 0; k < 3; ++k)
-		    if (eulerAngleOrder[j + k] == hingeJoints.at(jointName))
-			break;
-		q[index] = t[j + k];
-		index += 1;
-	    }
-	    else
-	    {
-		Eigen::AngleAxisd r0 = Eigen::AngleAxisd(t[j], axises[eulerAngleOrder[j]]);
-		Eigen::AngleAxisd r1 = Eigen::AngleAxisd(t[j + 1], axises[eulerAngleOrder[j + 1]]);
-		Eigen::AngleAxisd r2 = Eigen::AngleAxisd(t[j + 2], axises[eulerAngleOrder[j + 2]]);
-		Eigen::Matrix3d rotation = (r0 * r1 * r2).toRotationMatrix();
-		Eigen::Vector3d positions = BallJoint::convertToPositions(rotation);
-		q[index] = positions[0];
-		q[index + 1] = positions[1];
-		q[index + 2] = positions[2];
-		index += 3;
-	    }
-	}
-	for (size_t j = 0; j < 3; ++j)
-	    q[j] = t[j];
-	// root node: rotation, translation
-	for (size_t j = 0; j < 3; ++j)
-	    std::swap(q[j], q[j + 3]);
-	frame.push_back(q);
+	rawFrame.push_back(t);
     }
+    frame = eulerAngleToFrame(rawFrame);
     return 1;
 }
 
@@ -520,7 +541,6 @@ void BVHData::setGeometry(const BodyNodePtr& bn, double x, double y, double z, b
 	if (isEndSite) scale = 1.5;
 	std::shared_ptr<BoxShape> box(new BoxShape(Eigen::Vector3d(scale * sqrt(x * x + y * y + z * z), w, w)));
 	auto shapeNode = bn->createShapeNodeWith<VisualAspect, CollisionAspect, DynamicsAspect>(box);
-	// TODO
 	shapeNode->getVisualAspect()->setColor(dart::Color::Blue());
 	Eigen::Isometry3d tf;
 	Eigen::Vector3d t(x / 2.0, y / 2.0, z / 2.0);
@@ -537,7 +557,6 @@ void BVHData::setGeometry(const BodyNodePtr& bn, double x, double y, double z, b
 	yr.normalize();
 	tf.matrix() << xr, yr, zr, t, 0, 0, 0, 1;
 	shapeNode->setRelativeTransform(tf);
-	bn->setLocalCOM(t);
     }
     else
     {
@@ -551,9 +570,14 @@ void BVHData::setGeometry(const BodyNodePtr& bn, double x, double y, double z, b
 	    std::cout << sn.shape->getType() << " " << sn.shape->getVolume() << std::endl;
 	    std::cout << sn.tf.matrix() << std::endl;
 	}
-	Eigen::Vector3d t(x / 2.0, y / 2.0, z / 2.0);
-	bn->setLocalCOM(t);
     }
+    Eigen::Vector3d t;
+    // because root has multiple child nodes, so...
+    if (bn->getParentBodyNode() == nullptr)
+	t = Eigen::Vector3d::Zero();
+    else
+	t = Eigen::Vector3d(x / 2.0, y / 2.0, z / 2.0);
+    bn->setLocalCOM(t);
 }
 
 void BVHData::upper(std::string& s)
