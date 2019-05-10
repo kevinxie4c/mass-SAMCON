@@ -67,7 +67,11 @@ void refine(bool useMass)
 		for (size_t k = 0; k < Config::sampleNum / samples.size(); ++k)
 		{
 		    VectorXd kernel = cmaes[i].getSample();
-		    VectorXd delta = frag.transformation.leftCols(Config::rank + 6).rightCols(Config::rank) * kernel;
+		    VectorXd delta;
+		    if (useMass)
+			delta = frag.transformation.leftCols(Config::rank + 6).rightCols(Config::rank) * kernel;
+		    else
+			delta = kernel;
 		    shared_ptr<Sample> t = make_shared<Sample>(sample, frag, delta, kernel, simulators[omp_get_thread_num()]);
 #pragma omp critical (queue_section)
 		    {
