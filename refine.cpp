@@ -25,7 +25,10 @@ void refine(bool useMass)
     size_t trial = 0;
     vector<WeirdCMAES> cmaes;
     for (size_t i = 0; i < walk.size(); ++i)
+    {
+	cout << initMean[i] << endl;
 	cmaes.push_back(WeirdCMAES(Config::rank, Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i]));
+    }
     vector<size_t> generation(walk.size(), 0);
     vector<size_t> notImprove(walk.size(), 0);
     vector<double> minCost(walk.size(), DBL_MAX);
@@ -67,7 +70,7 @@ void refine(bool useMass)
 		for (size_t k = 0; k < Config::sampleNum / samples.size(); ++k)
 		{
 		    VectorXd kernel = cmaes[i].getSample();
-		    VectorXd delta = frag.transformation.leftCols(Config::rank) * kernel;
+		    VectorXd delta = frag.transformation.leftCols(Config::rank + 6).rightCols(Config::rank) * kernel;
 		    shared_ptr<Sample> t = make_shared<Sample>(sample, frag, delta, kernel, simulators[omp_get_thread_num()]);
 #pragma omp critical (queue_section)
 		    {
@@ -116,27 +119,31 @@ void refine(bool useMass)
 	    }
 	}
 	++trial;
+	cout << "duration: " << timer.durationToString() << endl;;
 	std::cout << "trial: " << counter << " - " << trial << std::endl;
+	std::vector<std::shared_ptr<const Sample>> minSamplesList = minSample->getMinSamplesList();
+	std::vector<Eigen::VectorXd> minTrajectory;
+	for (std::shared_ptr<const Sample> s: minSamplesList)
+	{
+	    std::cout << s->cost << " ";
+	    minTrajectory.insert(minTrajectory.end(), s->trajectory.begin(), s->trajectory.end());
+	}
+	std::cout << endl;
 	if (Config::showWindow)
 	{
-	    MyWindow::bvh4window.frame.clear();
-	    for (std::shared_ptr<const Sample> s: minSample->getMinSamplesList())
-	    {
-		for (auto it: s->trajectory)
-		    MyWindow::bvh4window.frame.push_back(it);
-	    }
+	    MyWindow::bvh4window.frame = minTrajectory;
 	}
 	if (!Config::onlyLogAndFinal)
 	{
 	    std::ofstream output;
 	    if (!Config::onlyLogAndFinal)
 		output.open(Config::outputFileName + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
-	    for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(minSample->getTrajectory())) // used bvh4window.frame instead?
+	    for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(minTrajectory)) // used bvh4window.frame instead?
 		output << v.transpose() << std::endl;
 	    output.close();
 #ifndef NDEBUG
 	    vector<VectorXd> com, mmt;
-	    for (std::shared_ptr<const Sample> s: minSample->getMinSamplesList())
+	    for (std::shared_ptr<const Sample> s: minSamplesList)
 	    {
 		if (!Config::onlyLogAndFinal)
 		{
@@ -273,9 +280,17 @@ void refine(bool useMass)
 	output.close();
     }
 
+    std::vector<std::shared_ptr<const Sample>> minSamplesList = minSample->getMinSamplesList();
+    std::vector<Eigen::VectorXd> minTrajectory;
+    for (std::shared_ptr<const Sample> s: minSamplesList)
+    {
+	std::cout << s->cost << " ";
+	minTrajectory.insert(minTrajectory.end(), s->trajectory.begin(), s->trajectory.end());
+    }
+
     std::ofstream output;
     output.open(taskFileName + std::to_string(counter) + ".txt");
-    for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(minSample->getTrajectory()))
+    for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(minTrajectory))
 	output << v.transpose() << std::endl;
     output.close();
     size_t tRank = Config::rank;
@@ -283,7 +298,7 @@ void refine(bool useMass)
     if (Config::rank > Utility::ndof)
 	Config::rank = Utility::ndof;
     Config::initSigma *= 0.7;
-    for (VectorXd m: initMean)
+    for (VectorXd &m: initMean)
     {
 	VectorXd v = m;
 	m = VectorXd::Zero(Config::rank);

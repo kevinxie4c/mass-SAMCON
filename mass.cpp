@@ -20,6 +20,7 @@ vector<size_t> walk;
 vector<ControlFragment> frags;
 vector<VectorXd> initMean;
 vector<Simulator> simulators;
+Timer timer;
 
 
 int main(int argc, char* argv[])
@@ -45,7 +46,9 @@ int main(int argc, char* argv[])
     cout << "useMass = " << useMass << endl;
     Config::load(taskFileName);
     Utility::init();
-    vector<VectorXd> frame(Utility::mbvh.frame.cbegin() + Config::startFrame, Utility::mbvh.frame.cend());
+    if (Config::endFrame > Utility::mbvh.frame.size())
+	Config::endFrame = Utility::mbvh.frame.size();
+    vector<VectorXd> frame(Utility::mbvh.frame.cbegin() + Config::startFrame, Utility::mbvh.frame.cbegin()+ Config::endFrame);
     for (BVHData &bvh: Utility::bvhs)
 	bvh.frame = frame;
     Utility::mbvh.frame = frame;
@@ -73,8 +76,9 @@ int main(int argc, char* argv[])
 
     setUpFrags(useMass);
 
-    for (size_t j = 0; j < numFrag; ++j)
-	walk.push_back(j);
+    for (size_t i = 0; i < Config::loopNum; ++i)
+	for (size_t j = 0; j < numFrag; ++j)
+	    walk.push_back(j);
 
 #ifdef _OPENMP
     cout << "_OPENMP " << _OPENMP << endl;
@@ -92,8 +96,13 @@ int main(int argc, char* argv[])
 	for (size_t i = 0; i < walk.size(); ++i)
 	    initMean.push_back(Eigen::VectorXd::Zero(Config::rank));
 
+    cout << "duration: " << timer.durationToString() << endl;;
     while (rounds--)
+    {
+	Timer t;
 	refine(useMass);
+	cout << "round duration: " << t.durationToString() << endl;
+    }
 
     return 0;
 }

@@ -14,6 +14,7 @@
 #endif
 #include "control_fragment.h"
 #include "simulator.h"
+#include "timer.h"
 
 extern size_t numFrag;
 extern std::string taskFileName;
@@ -21,6 +22,7 @@ extern std::vector<size_t> walk;
 extern std::vector<ControlFragment> frags;
 extern std::vector<Eigen::VectorXd> initMean;
 extern std::vector<Simulator> simulators;
+extern Timer timer;
 
 void setUpFrags(bool useMass);
 

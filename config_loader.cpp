@@ -41,8 +41,8 @@ namespace Config
 
 	// algorithm
 	double scale = 100.0;
-	size_t startFrame = 32;
-	size_t endFrame = 300;
+	size_t startFrame = 0;
+	size_t endFrame = 1e8;
 	double groundOffset = -0.03;
 	size_t sampleNum = 1200, saveNum = 400;
 	double percentageDiscard = 0.4;

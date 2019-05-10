@@ -45,17 +45,17 @@ Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen:
 std::vector<Eigen::VectorXd> Sample::getTarget()
 {
     std::vector<Eigen::VectorXd> list;
-    std::cout << cost << " ";
+    //std::cout << cost << " ";
     list.push_back(ref);
     std::shared_ptr<const Sample> ptr = parent;
     //while (ptr != nullptr && ptr->parent != nullptr)
     while (ptr != nullptr)
     {
-	std::cout << ptr->cost << " ";
+	//std::cout << ptr->cost << " ";
 	list.push_back(ptr->ref);
 	ptr = ptr->parent;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     std::reverse(std::begin(list), std::end(list));
     return list;
 }
@@ -63,17 +63,17 @@ std::vector<Eigen::VectorXd> Sample::getTarget()
 std::vector<std::shared_ptr<const Sample>> Sample::getMinSamplesList()
 {
     std::vector<std::shared_ptr<const Sample>> list;
-    std::cout << cost << " ";
+    //std::cout << cost << " ";
     list.push_back(shared_from_this());
     std::shared_ptr<const Sample> ptr = parent;
     //while (ptr != nullptr && ptr->parent != nullptr)
     while (ptr != nullptr)
     {
-	std::cout << ptr->cost << " ";
+	//std::cout << ptr->cost << " ";
 	list.push_back(ptr);
 	ptr = ptr->parent;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     std::reverse(std::begin(list), std::end(list));
     return list;
 }
@@ -81,19 +81,19 @@ std::vector<std::shared_ptr<const Sample>> Sample::getMinSamplesList()
 std::vector<Eigen::VectorXd> Sample::getTrajectory() // should use getMinSamplesList instead
 {
     std::vector<Eigen::VectorXd> list;
-    std::cout << cost << " ";
+    //std::cout << cost << " ";
     for (auto it = trajectory.crbegin(); it != trajectory.crend(); ++it)
 	list.push_back(*it);
     std::shared_ptr<const Sample> ptr = parent;
     //while (ptr != nullptr && ptr->parent != nullptr)
     while (ptr != nullptr)
     {
-	std::cout << ptr->cost << " ";
+	//std::cout << ptr->cost << " ";
 	for (auto it = ptr->trajectory.crbegin(); it != ptr->trajectory.crend(); ++it)
 	    list.push_back(*it);
 	ptr = ptr->parent;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     std::reverse(std::begin(list), std::end(list));
     return list;
 }
@@ -110,7 +110,7 @@ std::vector<Eigen::VectorXd> Sample::getRef() // should use getMinSamplesList in
 	    list.push_back(ptr->ref);
 	ptr = ptr->parent;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     std::reverse(std::begin(list), std::end(list));
     return list;
 }
