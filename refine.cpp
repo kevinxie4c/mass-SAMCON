@@ -25,10 +25,7 @@ void refine(bool useMass)
     size_t trial = 0;
     vector<WeirdCMAES> cmaes;
     for (size_t i = 0; i < walk.size(); ++i)
-    {
-	cout << initMean[i] << endl;
 	cmaes.push_back(WeirdCMAES(Config::rank, Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i]));
-    }
     vector<size_t> generation(walk.size(), 0);
     vector<size_t> notImprove(walk.size(), 0);
     vector<double> minCost(walk.size(), DBL_MAX);
