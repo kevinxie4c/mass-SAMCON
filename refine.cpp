@@ -24,6 +24,7 @@ void refine(bool useMass)
     static double sigmaMax = Config::initSigma;
     size_t trial = 0;
     vector<WeirdCMAES> cmaes;
+    cout << initMean[0] << endl;
     for (size_t i = 0; i < walk.size(); ++i)
 	cmaes.push_back(WeirdCMAES(Config::rank, Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i]));
     vector<size_t> generation(walk.size(), 0);
@@ -254,25 +255,25 @@ void refine(bool useMass)
     for (size_t i = 1; i < savedSamples.size(); ++i)
     {
 	size_t h = 0;
-	initMean[i] = Eigen::VectorXd::Zero(Config::rank);
+	initMean[i - 1] = Eigen::VectorXd::Zero(Config::rank);
 	Eigen::VectorXd mean = Eigen::VectorXd::Zero(Utility::ndof);
 	for (const std::shared_ptr<Sample> &s: savedSamples[i])
 	{
 	    if (s->height >= 4)
 	    {
-		initMean[i] += s->kernel * s->height;
+		initMean[i - 1] += s->kernel * s->height;
 		h += s->height;
 		mean += s->delta * s->height;
 	    }
 	}
 	if (h > 0)
 	{
-	    initMean[i] /= h;
+	    initMean[i - 1] /= h;
 	    mean /= h;
 	}
 	else
 	{
-	    initMean[i] = Eigen::VectorXd::Zero(Config::rank);
+	    initMean[i - 1] = Eigen::VectorXd::Zero(Config::rank);
 	    mean = Eigen::VectorXd::Zero(Utility::ndof);
 	}
 	std::ofstream output;
@@ -288,6 +289,7 @@ void refine(bool useMass)
 	std::cout << s->cost << " ";
 	minTrajectory.insert(minTrajectory.end(), s->trajectory.begin(), s->trajectory.end());
     }
+    std::cout << std::endl;
 
     std::ofstream output;
     output.open(taskFileName + std::to_string(counter) + ".txt");
