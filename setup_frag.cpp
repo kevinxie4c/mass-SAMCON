@@ -1,3 +1,4 @@
+#include <cmath>
 #include "mass.h"
 
 using namespace std;
@@ -73,10 +74,16 @@ void setUpFrags(bool useMass)
 		    }
 	    // rank + (counter - 1) * dRank?
 	    //f.transformation = B.leftCols(Config::rank + 6).rightCols(Config::rank) * Config::scaleMassMatrix;
+	    double scaleMassMatrix = Config::scaleMassMatrix;
+	    if (Config::autoScaleMassMatrix)
+	    {
+		scaleMassMatrix = sqrt(Utility::ndof / mass.trace());
+		std::cout << "scaleMassMatrix " << i << ": " << scaleMassMatrix << std::endl;
+	    }
 	    if (Config::useEigenvalueScale)
-		f.transformation = B * Config::scaleMassMatrix * DiagonalMatrix<double, Dynamic, Dynamic>(D.array().sqrt().matrix());
+		f.transformation = B * scaleMassMatrix * DiagonalMatrix<double, Dynamic, Dynamic>(D.array().sqrt().matrix());
 	    else
-		f.transformation = B * Config::scaleMassMatrix;
+		f.transformation = B * scaleMassMatrix;
 	}
 	else
 	    f.transformation = Eigen::MatrixXd::Identity(Utility::ndof, Utility::ndof);

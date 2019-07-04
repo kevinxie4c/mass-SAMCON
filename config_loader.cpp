@@ -63,6 +63,7 @@ namespace Config
 	size_t rank = 10;
 	size_t dRank = 5;
 	double scaleMassMatrix;
+	bool autoScaleMassMatrix = false;
 	bool useEigenvalueScale = false;
 
 	// others
@@ -184,6 +185,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	dRank = std::stoi(value);
     else if (parameter == "scaleMassMatrix")
 	scaleMassMatrix = std::stod(value);
+    else if (parameter == "autoScaleMassMatrix")
+	autoScaleMassMatrix = std::stod(value);
     else if (parameter == "useEigenvalueScale")
 	useEigenvalueScale = std::stoi(value);
     else if (parameter == "trialMax")
