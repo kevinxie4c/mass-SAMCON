@@ -64,6 +64,7 @@ namespace Config
 	extern size_t rank;
 	extern size_t dRank;
 	extern double scaleMassMatrix;
+	extern bool useEigenvalueScale;
 
 	// others
 	extern bool showWindow;

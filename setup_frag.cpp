@@ -73,7 +73,10 @@ void setUpFrags(bool useMass)
 		    }
 	    // rank + (counter - 1) * dRank?
 	    //f.transformation = B.leftCols(Config::rank + 6).rightCols(Config::rank) * Config::scaleMassMatrix;
-	    f.transformation = B * Config::scaleMassMatrix;
+	    if (Config::useEigenvalueScale)
+		f.transformation = B * Config::scaleMassMatrix * DiagonalMatrix<double, Dynamic, Dynamic>(D.array().sqrt().matrix());
+	    else
+		f.transformation = B * Config::scaleMassMatrix;
 	}
 	else
 	    f.transformation = Eigen::MatrixXd::Identity(Utility::ndof, Utility::ndof);
