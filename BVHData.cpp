@@ -47,7 +47,8 @@ int BVHData::loadBVH(const std::string& filename, const std::string& configFileN
     input.open(filename);
     int ret = parseBVH(input);
     input.close();
-    skeleton->setSelfCollisionCheck(false);
+    skeleton->setSelfCollisionCheck(true);
+    skeleton->setAdjacentBodyCheck(false);
     return ret;
 }
 
