@@ -537,7 +537,7 @@ void BVHData::setGeometry(const BodyNodePtr& bn, double x, double y, double z, b
 {
     if (geometryConfig[bn->getName()].empty())
     {
-	double w = 0.02;
+	double w = 0.06;
 	double scale = 1.0;
 	if (isEndSite) scale = 1.5;
 	std::shared_ptr<BoxShape> box(new BoxShape(Eigen::Vector3d(scale * sqrt(x * x + y * y + z * z), w, w)));

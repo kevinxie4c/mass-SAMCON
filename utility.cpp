@@ -78,12 +78,22 @@ void Utility::init()
     for (size_t i = 0; i < massList.size(); ++i)
     {
 	std::cout << bns[i]->getName() << " " << massList[i] << std::endl;
-	ShapeNode *shapeNode = bns[i]->getShapeNode(0);
+	/*
+	std::cout << bns[i]->getShapeNodes().size() << std::endl;
+	ShapeNode *shapeNode = bns[i]->getShapeNode(1);
 	ShapePtr shape = shapeNode->getShape();
+	std::cout << shape->getType() << std::endl;
+	std::cout << shape->getVolume() << std::endl;
 	Inertia inertia;
+	inertia.setLocalCOM(bns[i]->getLocalCOM());
 	inertia.setMass(massList[i]);
 	inertia.setMoment(shape->computeInertia(massList[i]));
+	std::cout << inertia.getLocalCOM() << std::endl;
+	std::cout << inertia.getMoment() << std::endl;
 	bns[i]->setInertia(inertia);
+	*/
+	std::cout << bns[i]->getSpatialInertia() << std::endl;
+	bns[i]->setMass(massList[i]);
     }
     std::vector<double> stiffness = readListFrom<double>(Config::stiffnessFileName);
     std::vector<double> damping = readListFrom<double>(Config::dampingFileName);
