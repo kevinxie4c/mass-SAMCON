@@ -77,7 +77,8 @@ void setUpFrags(bool useMass)
 	    double scaleMassMatrix = Config::scaleMassMatrix;
 	    if (Config::autoScaleMassMatrix)
 	    {
-		scaleMassMatrix = sqrt(Utility::ndof / mass.trace());
+		//scaleMassMatrix = sqrt(Utility::ndof / mass.trace());
+		scaleMassMatrix = sqrt(1.0 / D[6]);
 		std::cout << "scaleMassMatrix " << i << ": " << scaleMassMatrix << std::endl;
 	    }
 	    if (Config::useEigenvalueScale)
