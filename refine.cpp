@@ -45,13 +45,14 @@ void refine(bool useMass)
     for (size_t i = 0; i < Config::saveNum; ++i)
 	tmpList.push_back(make_shared<Sample>(initPose, initVel));
     savedSamples.push_back(tmpList);
-    size_t i_begin = 0, i_end;
+    size_t i_begin = 0, i_end, i_begin_backup = 0;
     size_t trialTimes = 0;
     while (i_begin < walk.size())
     {
 	i_end = i_begin + Config::slidingWindow;
 	if (i_end > walk.size())
 	    i_end = walk.size();
+	bool failed = false;
 	for (size_t i = i_begin; i < i_end; ++i)
 	{
 	    cout << "i = " << i << endl;
@@ -95,6 +96,7 @@ void refine(bool useMass)
 	    {
 		i_end = i;
 		cout << "fail" << endl;
+		failed = true;
 		break;
 	    }
 	    if (tmp.back()->cost < minCost[i])
@@ -235,10 +237,17 @@ void refine(bool useMass)
 	    }
 	    continue;
 	}
-	while (i_begin < walk.size() && (generation[i_begin] > Config::trialMax || notImprove[i_begin] > Config::notImproveMax || minCost[i_begin] < Config::goodEnough))
+	if (!failed)
 	{
-	    ++i_begin;
+	    i_begin_backup = i_begin;
+	    while (i_begin < walk.size() && (generation[i_begin] > Config::trialMax || notImprove[i_begin] > Config::notImproveMax || minCost[i_begin] < Config::goodEnough))
+	    {
+		++i_begin;
+	    }
 	}
+	else
+	    i_begin = i_begin_backup;
+	trialTimes = 0;
     }
     std::shared_ptr<Sample> minSample = nullptr;
     double min = DBL_MAX;
