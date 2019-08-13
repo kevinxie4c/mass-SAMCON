@@ -189,7 +189,7 @@ void refine(bool useMass)
 		    tQueue.pop();
 		}
 		std::cout << i << " " << h << " " << cost << std::endl;
-		if (h > maxHeight[i] || (h == maxHeight[i] && cost < minAccCost[i])) // do CMA-ES only if the samples are better
+		//if (h > maxHeight[i] || (h == maxHeight[i] && cost < minAccCost[i])) // do CMA-ES only if the samples are better
 		{
 		    maxHeight[i] = h;
 		    minAccCost[i] = cost;
@@ -228,6 +228,7 @@ void refine(bool useMass)
 	for (size_t i = 0; i < walk.size(); ++i)
 	    std::cout << cmaes[i].sigma << " ";
 	std::cout << std::endl;
+	/*
 	if (generation[i_begin] < Config::trialMin)
 	{
 	    if (++trialTimes > Config::trialMin)
@@ -237,6 +238,7 @@ void refine(bool useMass)
 	    }
 	    continue;
 	}
+	*/
 	if (!failed)
 	{
 	    i_begin_backup = i_begin;
