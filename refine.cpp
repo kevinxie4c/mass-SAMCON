@@ -53,6 +53,7 @@ void refine(bool useMass)
 	if (i_end > walk.size())
 	    i_end = walk.size();
 	bool failed = false;
+	bool failedAtBegin = false;
 	for (size_t i = i_begin; i < i_end; ++i)
 	{
 	    cout << "i = " << i << endl;
@@ -97,6 +98,8 @@ void refine(bool useMass)
 		i_end = i;
 		cout << "fail" << endl;
 		failed = true;
+		if (i == i_begin)
+		    failedAtBegin = true;
 		break;
 	    }
 	    if (tmp.back()->cost < minCost[i])
@@ -239,16 +242,21 @@ void refine(bool useMass)
 	    continue;
 	}
 	*/
-	if (!failed)
+	
+	if (failedAtBegin)
 	{
-	    i_begin_backup = i_begin;
+	    // rollback to the last successfull trial if failed at the beginning
+	    i_begin = i_begin_backup;
+	}
+	else
+	{
+	    if (!failed)
+		i_begin_backup = i_begin;
 	    while (i_begin < walk.size() && (generation[i_begin] > Config::trialMax || notImprove[i_begin] > Config::notImproveMax || minCost[i_begin] < Config::goodEnough))
 	    {
 		++i_begin;
 	    }
 	}
-	else
-	    i_begin = i_begin_backup;
 	trialTimes = 0;
     }
     std::shared_ptr<Sample> minSample = nullptr;
