@@ -25,7 +25,7 @@ class Simulator
 #ifdef NDEBUG
 	bool driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory);
 #else
-	bool driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt);
+	bool driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces);
 #endif
 
 };

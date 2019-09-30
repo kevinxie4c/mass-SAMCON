@@ -149,7 +149,7 @@ void refine(bool useMass)
 		output << v.transpose() << std::endl;
 	    output.close();
 #ifndef NDEBUG
-	    vector<VectorXd> com, mmt;
+	    vector<VectorXd> com, mmt, forces;
 	    for (std::shared_ptr<const Sample> s: minSamplesList)
 	    {
 		if (!Config::onlyLogAndFinal)
@@ -158,6 +158,8 @@ void refine(bool useMass)
 			com.push_back(it);
 		    for (auto it: s->mmt)
 			mmt.push_back(it);
+		    for (auto it: s->forces)
+			forces.push_back(it);
 		}
 	    }
 	    output.open("com" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
@@ -166,6 +168,10 @@ void refine(bool useMass)
 	    output.close();
 	    output.open("mmt" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
 	    for (const Eigen::VectorXd &v: mmt)
+		output << v.transpose() << std::endl;
+	    output.close();
+	    output.open("forces" + std::to_string(counter) + "_" + std::to_string(trial) + ".txt");
+	    for (const Eigen::VectorXd &v: forces)
 		output << v.transpose() << std::endl;
 	    output.close();
 #endif
@@ -314,6 +320,10 @@ void refine(bool useMass)
     output.open(taskFileName + std::to_string(counter) + ".txt");
     for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(minTrajectory))
 	output << v.transpose() << std::endl;
+    output.close();
+    output.open("delta" + std::to_string(counter) + ".txt");
+    for (std::shared_ptr<const Sample> s: minSamplesList)
+	output << s->delta.transpose() << std::endl;
     output.close();
     size_t tRank = Config::rank;
     Config::rank += Config::dRank;

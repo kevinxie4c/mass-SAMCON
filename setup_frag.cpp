@@ -101,7 +101,8 @@ void setUpFrags(bool useMass)
 	vector<VectorXd> dummyTraj;
 #ifndef NDEBUG
 	vector<Vector3d> dummyCom, dummyMmt;
-	sim.driveTo(frags[0].tracked, dummyTraj, dummyCom, dummyMmt);
+	vector<VectorXd> dummyForces;
+	sim.driveTo(frags[0].tracked, dummyTraj, dummyCom, dummyMmt, dummyForces);
 #else
 	sim.driveTo(frags[0].tracked, dummyTraj);
 #endif
@@ -111,7 +112,7 @@ void setUpFrags(bool useMass)
 	{
 	    sim.setPose(frags[i - 1].tracked, frags[i - 1].vel);
 #ifndef NDEBUG
-	    sim.driveTo(frags[i].tracked, dummyTraj, dummyCom, dummyMmt);
+	    sim.driveTo(frags[i].tracked, dummyTraj, dummyCom, dummyMmt, dummyForces);
 #else
 	    sim.driveTo(frags[i].tracked, dummyTraj);
 #endif

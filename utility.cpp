@@ -282,6 +282,7 @@ dart::dynamics::SkeletonPtr Utility::createFloor()
     BodyNodePtr body = floor->createJointAndBodyNodePair<WeldJoint>(nullptr).second;
     body->setFrictionCoeff(Config::frictionCoeff);
     body->setRestitutionCoeff(Config::restitutionCoeff);
+    body->setName("floor");
 
     // Give the body a shape
     double floor_width = 1e8;

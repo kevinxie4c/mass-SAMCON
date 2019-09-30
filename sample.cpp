@@ -24,7 +24,7 @@ Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen:
 #ifdef NDEBUG
     if (sim.driveTo(ref, trajectory))
 #else
-    if (sim.driveTo(ref, trajectory, com, mmt))
+    if (sim.driveTo(ref, trajectory, com, mmt, forces))
 #endif
     {
 	resultPose = sim.skeleton->getPositions();

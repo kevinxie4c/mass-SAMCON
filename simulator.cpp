@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <limits>
 #include "simulator.h"
 #include "utility.h"
 
@@ -24,7 +26,7 @@ void Simulator::setPose(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel)
 #ifdef NDEBUG
 bool Simulator::driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory)
 #else
-bool Simulator::driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt)
+bool Simulator::driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces)
 #endif
 {
     for (size_t i = 0; i < Config::groupNum; ++i)
@@ -38,6 +40,7 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd>
 	    Eigen::VectorXd d = -Utility::mKd * dq;
 	    Eigen::VectorXd qddot = invM * (-skeleton->getCoriolisAndGravityForces() + p + d + skeleton->getConstraintForces());
 	    Eigen::VectorXd force = p + d -Utility::mKd * qddot * skeleton->getTimeStep();
+	    forces.push_back(force);
 	    for (size_t k = 0; k < Config::stepPerFrame; ++k)
 	    {
 		skeleton->setForces(force);
@@ -53,10 +56,13 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd>
 		Eigen::VectorXd p = -Utility::mKp * skeleton->getPositionDifferences(q, ref);
 		Eigen::VectorXd d = -Utility::mKd * dq;
 		Eigen::VectorXd force = p + d;
+		forces.push_back(force);
 		skeleton->setForces(force);
 		world->step();
 	    }
+	    
 	}
+	
 	resultTrajectory.push_back(skeleton->getPositions());
 	const BodyNode *bn = skeleton->getRootBodyNode();
 #ifndef NDEBUG
