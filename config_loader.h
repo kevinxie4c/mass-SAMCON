@@ -66,6 +66,7 @@ namespace Config
 	extern double scaleMassMatrix;
 	extern bool useEigenvalueScale;
 	extern bool autoScaleMassMatrix;
+	extern bool useInverseForce;
 
 	// others
 	extern bool showWindow;

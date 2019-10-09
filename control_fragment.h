@@ -11,6 +11,7 @@ class ControlFragment
 	Eigen::MatrixXd m, sigma;
 	Eigen::VectorXd a, tracked;
 	Eigen::VectorXd vel; // pose = tracked
+	std::vector<Eigen::VectorXd> iforces; // inverse dynamics force
 
 	std::vector<Eigen::Vector3d> endQ, endVel, endPos;
 	Eigen::Vector3d endCOM, endCOMVel;

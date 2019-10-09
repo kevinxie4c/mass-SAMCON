@@ -575,14 +575,16 @@ std::vector<std::string> Utility::split(std::string s)
     size_t pos;
     while ((pos = s.find(delimiter)) != std::string::npos)
     {
-	result.push_back(s.substr(0, pos));
+	std::string t = s.substr(0, pos);
+	if (!t.empty())
+	    result.push_back(t);
 	s.erase(0, pos + delimiter.length());
     }
     result.push_back(s);
     return result;
 }
 
-std::vector<Eigen::VectorXd> Utility::readVetorXdListFrom(const std::string &filename)
+std::vector<Eigen::VectorXd> Utility::readVectorXdListFrom(const std::string &filename)
 {
     std::vector<Eigen::VectorXd> result;
     std::ifstream input(filename);

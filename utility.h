@@ -48,7 +48,7 @@ namespace Utility
 
     std::vector<std::string> split(std::string s);
 
-    std::vector<Eigen::VectorXd> readVetorXdListFrom(const std::string &filename);
+    std::vector<Eigen::VectorXd> readVectorXdListFrom(const std::string &filename);
 
     Eigen::MatrixXd readMatrixXdFrom(const std::string &filename);
 

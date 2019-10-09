@@ -59,6 +59,7 @@ void setUpFrags(bool useMass)
 
 	f.tracked = pose;
 	f.vel = vel;
+	f.iforces = std::vector<Eigen::VectorXd>(forces.cbegin() + i * Config::groupNum, forces.cbegin() + i * Config::groupNum + Config::groupNum);
 	if (useMass)
 	{
 	    Eigen::MatrixXd mass = Utility::bvhs[omp_get_thread_num()].skeleton->getMassMatrix();
@@ -102,9 +103,9 @@ void setUpFrags(bool useMass)
 #ifndef NDEBUG
 	vector<Vector3d> dummyCom, dummyMmt;
 	vector<VectorXd> dummyForces;
-	sim.driveTo(frags[0].tracked, dummyTraj, dummyCom, dummyMmt, dummyForces);
+	sim.driveTo(frags[0].tracked, frags[0].iforces, dummyTraj, dummyCom, dummyMmt, dummyForces);
 #else
-	sim.driveTo(frags[0].tracked, dummyTraj);
+	sim.driveTo(frags[0].tracked, frags[0].iforces, dummyTraj);
 #endif
 	frags[0].aftOffset = Utility::bvhs[omp_get_thread_num()].skeleton->getPositionDifferences(frags[0].tracked, sim.skeleton->getPositions());
 
@@ -112,9 +113,9 @@ void setUpFrags(bool useMass)
 	{
 	    sim.setPose(frags[i - 1].tracked, frags[i - 1].vel);
 #ifndef NDEBUG
-	    sim.driveTo(frags[i].tracked, dummyTraj, dummyCom, dummyMmt, dummyForces);
+	    sim.driveTo(frags[i].tracked, frags[i].iforces, dummyTraj, dummyCom, dummyMmt, dummyForces);
 #else
-	    sim.driveTo(frags[i].tracked, dummyTraj);
+	    sim.driveTo(frags[i].tracked, frags[i].iforces, dummyTraj);
 #endif
 	    frags[i].aftOffset = Utility::bvhs[omp_get_thread_num()].skeleton->getPositionDifferences(frags[i].tracked, sim.skeleton->getPositions());
 	}

@@ -22,6 +22,7 @@ extern std::vector<size_t> walk;
 extern std::vector<ControlFragment> frags;
 extern std::vector<Eigen::VectorXd> initMean;
 extern std::vector<Simulator> simulators;
+extern std::vector<Eigen::VectorXd> forces; // inverse dynamics force
 extern Timer timer;
 
 void setUpFrags(bool useMass);

@@ -23,9 +23,9 @@ class Simulator
 
 	const double largeNum = 100;
 #ifdef NDEBUG
-	bool driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory);
+	bool driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforces, std::vector<Eigen::VectorXd> &resultTrajectory);
 #else
-	bool driveTo(const Eigen::VectorXd &ref, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces);
+	bool driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforces, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces);
 #endif
 
 };

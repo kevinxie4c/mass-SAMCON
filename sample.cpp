@@ -22,9 +22,9 @@ Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen:
     if (Config::useAFT)
 	ref = sim.skeleton->getPositionDifferences(ref, -cf.aftOffset);
 #ifdef NDEBUG
-    if (sim.driveTo(ref, trajectory))
+    if (sim.driveTo(ref, cf.iforces, trajectory))
 #else
-    if (sim.driveTo(ref, trajectory, com, mmt, forces))
+    if (sim.driveTo(ref, cf.iforces, trajectory, com, mmt, forces))
 #endif
     {
 	resultPose = sim.skeleton->getPositions();

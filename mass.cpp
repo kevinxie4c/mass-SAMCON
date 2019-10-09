@@ -20,6 +20,7 @@ vector<size_t> walk;
 vector<ControlFragment> frags;
 vector<VectorXd> initMean;
 vector<Simulator> simulators;
+vector<VectorXd> forces;
 Timer timer;
 
 
@@ -74,6 +75,13 @@ int main(int argc, char* argv[])
 	pthread_create(&thread, NULL, (void* (*)(void*))glutMainLoop, NULL);
     }
 
+    if (Config::useInverseForce)
+    {
+	forces = Utility::readVectorXdListFrom("force.txt");
+	forces = std::vector<Eigen::VectorXd>(forces.cbegin() + Config::startFrame, forces.cbegin() + Config::endFrame);
+    }
+    else
+	forces = std::vector<Eigen::VectorXd>(Config::endFrame - Config::startFrame, Eigen::VectorXd::Zero(Utility::ndof));
     setUpFrags(useMass);
 
     for (size_t i = 0; i < Config::loopNum; ++i)
