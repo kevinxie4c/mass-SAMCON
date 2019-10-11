@@ -31,6 +31,7 @@ int main(int argc, char* argv[])
 #else
     cout << "mass (debug)" << endl;
 #endif
+    cout << "use inverse dynamics" << endl;
     if (argc > 1)
     {
 	if (argc > 4)
