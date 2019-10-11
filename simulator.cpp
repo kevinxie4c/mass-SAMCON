@@ -41,7 +41,9 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 	    Eigen::VectorXd qddot = invM * (-skeleton->getCoriolisAndGravityForces() + p + d + skeleton->getConstraintForces());
 	    Eigen::VectorXd force = p + d -Utility::mKd * qddot * skeleton->getTimeStep() + iforce[i];
 	    //Eigen::VectorXd force = iforce[i];
+#ifndef NDEBUG
 	    forces.push_back(force);
+#endif
 	    for (size_t k = 0; k < Config::stepPerFrame; ++k)
 	    {
 		skeleton->setForces(force);
@@ -58,7 +60,9 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 		Eigen::VectorXd d = -Utility::mKd * dq;
 		// forces.size() != groupNum. need to fix
 		Eigen::VectorXd force = p + d + iforce[i];
+#ifndef NDEBUG
 		forces.push_back(force);
+#endif
 		skeleton->setForces(force);
 		world->step();
 	    }
