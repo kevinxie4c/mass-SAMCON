@@ -1,4 +1,5 @@
 #include <cmath>
+#include <fstream>
 #include "mass.h"
 
 using namespace std;
@@ -7,6 +8,13 @@ using namespace Eigen;
 // set up frags
 void setUpFrags(bool useMass)
 {
+    MatrixXd eigenvectors;
+    VectorXd eigenvalues;
+    if (Config::useEigenvector)
+    {
+	eigenvectors = Utility::readMatrixXdFrom("eigenvectors.txt");
+	eigenvalues = Utility::readVectorXdFrom("eigenvalues.txt");
+    }
     for (size_t i = 0; i < numFrag; ++i)
     {
 	frags.push_back(ControlFragment());
@@ -86,6 +94,16 @@ void setUpFrags(bool useMass)
 		f.transformation = B * scaleMassMatrix * DiagonalMatrix<double, Dynamic, Dynamic>(D.array().sqrt().matrix());
 	    else
 		f.transformation = B * scaleMassMatrix;
+	}
+	else if (Config::useEigenvector)
+	{
+	    double scaleMassMatrix = Config::scaleMassMatrix;
+	    if (Config::autoScaleMassMatrix)
+		scaleMassMatrix = 1 / eigenvalues[0];
+	    if (Config::useEigenvalue)
+		f.transformation = eigenvectors * scaleMassMatrix * DiagonalMatrix<double, Dynamic, Dynamic>(eigenvalues.array().matrix());
+	    else
+		f.transformation = eigenvectors * scaleMassMatrix;
 	}
 	else
 	    f.transformation = Eigen::MatrixXd::Identity(Utility::ndof, Utility::ndof);

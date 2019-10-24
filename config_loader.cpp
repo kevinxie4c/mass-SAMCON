@@ -66,6 +66,8 @@ namespace Config
 	bool autoScaleMassMatrix = false;
 	bool useEigenvalueScale = false;
 	bool useInverseForce = false;
+	bool useEigenvector = false;
+	bool useEigenvalue = false;
 
 	// others
 	bool showWindow = false;
@@ -192,6 +194,10 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	useEigenvalueScale = std::stoi(value);
     else if (parameter == "useInverseForce")
 	useInverseForce = std::stoi(value);
+    else if (parameter == "useEigenvector")
+	useEigenvector = std::stoi(value);
+    else if (parameter == "useEigenvalue")
+	useEigenvalue = std::stoi(value);
     else if (parameter == "trialMax")
 	trialMax = std::stoi(value);
     else if (parameter == "trialMin")

@@ -67,6 +67,8 @@ namespace Config
 	extern bool useEigenvalueScale;
 	extern bool autoScaleMassMatrix;
 	extern bool useInverseForce;
+	extern bool useEigenvector;
+	extern bool useEigenvalue;
 
 	// others
 	extern bool showWindow;
