@@ -101,7 +101,7 @@ void setUpFrags(bool useMass)
 	    if (Config::autoScaleMassMatrix)
 		scaleMassMatrix = 1 / eigenvalues[0];
 	    if (Config::useEigenvalue)
-		f.transformation = eigenvectors * scaleMassMatrix * DiagonalMatrix<double, Dynamic, Dynamic>(eigenvalues.array().matrix());
+		f.transformation = eigenvectors * scaleMassMatrix * DiagonalMatrix<double, Dynamic, Dynamic>(eigenvalues.array().sqrt().matrix());
 	    else
 		f.transformation = eigenvectors * scaleMassMatrix;
 	}
