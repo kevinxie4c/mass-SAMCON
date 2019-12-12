@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sys/stat.h>
 #include "utility.h"
 #ifdef _OPENMP
 #include <omp.h>
@@ -641,3 +642,16 @@ Eigen::MatrixXd Utility::readMatrixXdFrom(const std::string &filename)
     return result;
 }
 
+bool Utility::dirExists(std::string name)
+{
+    struct stat buf;
+    if (stat(name.c_str(), &buf) == 0 && S_ISDIR(buf.st_mode))
+	return true;
+    return false;
+}
+
+void Utility::createDir(std::string name)
+{
+    mkdir(name.c_str(), 0755);
+}
+    

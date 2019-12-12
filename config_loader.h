@@ -74,6 +74,7 @@ namespace Config
 	extern bool showWindow;
 	extern bool onlyLogAndFinal;
 	extern size_t loopNum;
+	extern bool generateSamplesFile;
 
 	void load(const std::string &filename);
 

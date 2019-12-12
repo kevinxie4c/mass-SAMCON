@@ -127,55 +127,60 @@ size_t BVHData::getChannelSize() const
     return m_channelSize;
 }
 
+static double pi = acos(-1);
+
+Eigen::VectorXd BVHData::toEulerAngle(Eigen::VectorXd pose) const
+{
+    Eigen::VectorXd vec(getChannelSize());
+    pose.segment(0, 3).swap(pose.segment(3, 3)); // swap position and rotation of the root
+    pose.segment(0, 3) *= this->scale;
+    vec.segment(0, 3) = pose.segment(0, 3);
+    /*
+       for (size_t i = 3; i < getChannelSize(); i += 3)
+       {
+       pose.segment(i, 3) = BallJoint::convertToRotation(pose.segment(i, 3)).eulerAngles(eulerAngleOrder[i], eulerAngleOrder[i + 1], eulerAngleOrder[i + 2]) / (2.0 * pi) * 360.0;
+       }
+       */
+    size_t index = 3;
+    for (size_t i = 3; i < getChannelSize(); i += 3)
+    {
+	std::string jointName = skeleton->getJoints()[i / 3 - 1]->getName();
+	if (hingeJoints.find(jointName) != hingeJoints.end())
+	{
+	    for (size_t j = 0; j < 3; ++j)
+		vec[i + j] = 0;
+	    size_t k = 0;
+	    for (k = 0; k < 3; ++k)
+		if (eulerAngleOrder[i + k] == hingeJoints.at(jointName))
+		    break;
+	    vec[i + k] = pose[index] / (2.0 * pi) * 360.0;
+	    index += 1;
+	}
+	else
+	{
+	    vec.segment(i, 3) = BallJoint::convertToRotation(pose.segment(index, 3)).eulerAngles(eulerAngleOrder[i], eulerAngleOrder[i + 1], eulerAngleOrder[i + 2]) / (2.0 * pi) * 360.0;
+	    index += 3;
+	}
+    }
+    return vec;
+}
+
 std::vector<Eigen::VectorXd> BVHData::frameToEulerAngle() const
 {
     return frameToEulerAngle(frame);
 }
 
-std::vector<Eigen::VectorXd> BVHData::frameToEulerAngle(std::vector<Eigen::VectorXd> targetFrame) const
+std::vector<Eigen::VectorXd> BVHData::frameToEulerAngle(const std::vector<Eigen::VectorXd> &targetFrame) const
 {
-    static double pi = acos(-1);
-    std::vector<Eigen::VectorXd> list = targetFrame;
     std::vector<Eigen::VectorXd> result;
-    for (Eigen::VectorXd &pose: list)
+    for (const Eigen::VectorXd &pose: targetFrame)
     {
-	Eigen::VectorXd vec(getChannelSize());
-	pose.segment(0, 3).swap(pose.segment(3, 3)); // swap position and rotation of the root
-	pose.segment(0, 3) *= this->scale;
-	vec.segment(0, 3) = pose.segment(0, 3);
-	/*
-       for (size_t i = 3; i < getChannelSize(); i += 3)
-       {
-	   pose.segment(i, 3) = BallJoint::convertToRotation(pose.segment(i, 3)).eulerAngles(eulerAngleOrder[i], eulerAngleOrder[i + 1], eulerAngleOrder[i + 2]) / (2.0 * pi) * 360.0;
-       }
-       */
-	size_t index = 3;
-	for (size_t i = 3; i < getChannelSize(); i += 3)
-	{
-	    std::string jointName = skeleton->getJoints()[i / 3 - 1]->getName();
-	    if (hingeJoints.find(jointName) != hingeJoints.end())
-	    {
-		for (size_t j = 0; j < 3; ++j)
-		    vec[i + j] = 0;
-		size_t k = 0;
-		for (k = 0; k < 3; ++k)
-		    if (eulerAngleOrder[i + k] == hingeJoints.at(jointName))
-			break;
-		vec[i + k] = pose[index] / (2.0 * pi) * 360.0;
-		index += 1;
-	    }
-	    else
-	    {
-		vec.segment(i, 3) = BallJoint::convertToRotation(pose.segment(index, 3)).eulerAngles(eulerAngleOrder[i], eulerAngleOrder[i + 1], eulerAngleOrder[i + 2]) / (2.0 * pi) * 360.0;
-		index += 3;
-	    }
-	}
-	result.push_back(vec);
+	result.push_back(toEulerAngle(pose));
     }
     return result;
 }
 
-std::vector<Eigen::VectorXd> BVHData::eulerAngleToFrame(std::vector<Eigen::VectorXd> rawFrame) const
+std::vector<Eigen::VectorXd> BVHData::eulerAngleToFrame(const std::vector<Eigen::VectorXd> &rawFrame) const
 {
     std::vector<Eigen::VectorXd> result;
     for (size_t i = 0; i < rawFrame.size(); ++i)

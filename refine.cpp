@@ -21,6 +21,15 @@ void refine(bool useMass)
     static size_t counter = 0;
     ++counter;
     cout << "refine " << counter << endl;
+
+    string samplesDir = "samples";
+    if (Config::generateSamplesFile)
+    {
+	string name = samplesDir + "/" + std::to_string(counter);
+	if (!Utility::dirExists(name))
+	    Utility::createDir(name);
+    }
+
     static double sigmaMax = Config::initSigma;
     size_t trial = 0;
     vector<WeirdCMAES> cmaes;
@@ -49,6 +58,15 @@ void refine(bool useMass)
     size_t trialTimes = 0;
     while (i_begin < walk.size())
     {
+	++trial;
+	
+	if (Config::generateSamplesFile)
+	{
+	    string name = samplesDir + "/" + std::to_string(counter) + "/" + std::to_string(trial);
+	    if (!Utility::dirExists(name))
+		Utility::createDir(name);
+	}
+
 	i_end = i_begin + Config::slidingWindow;
 	if (i_end > walk.size())
 	    i_end = walk.size();
@@ -58,6 +76,14 @@ void refine(bool useMass)
 	{
 	    cout << "i = " << i << endl;
 	    cout << "frag " << walk[i] << endl;
+
+	    if (Config::generateSamplesFile)
+	    {
+		string name = samplesDir + "/" + std::to_string(counter) + "/" + std::to_string(trial) + "/" + std::to_string(i);
+		if (!Utility::dirExists(name))
+		    Utility::createDir(name);
+	    }
+
 	    ControlFragment &frag = frags[walk[i]];
 	    // we use savedSamples[i - 1 + 1]
 	    // save sample at savedSamples[i + 1]
@@ -76,6 +102,17 @@ void refine(bool useMass)
 		    else
 			delta = kernel;
 		    shared_ptr<Sample> t = make_shared<Sample>(sample, frag, delta, kernel, simulators[omp_get_thread_num()]);
+		    
+		    if (Config::generateSamplesFile)
+		    {
+			string name = samplesDir + "/" + std::to_string(counter) + "/" + std::to_string(trial) + "/" + std::to_string(i) + "/" + std::to_string(j) + "-" + std::to_string(k) + ".txt";
+			ofstream fout(name);
+			fout << Utility::bvhs[omp_get_thread_num()].toEulerAngle(t->resultPose).transpose() << endl;
+			fout << Utility::bvhs[omp_get_thread_num()].toEulerAngle(t->ref).transpose() << endl;
+			fout << t->cost << endl;
+			fout.close();
+		    }
+
 #pragma omp critical (queue_section)
 		    {
 			queue.push(t);
@@ -125,7 +162,6 @@ void refine(bool useMass)
 		minSample = sample;
 	    }
 	}
-	++trial;
 	cout << "duration: " << timer.durationToString() << endl;;
 	std::cout << "trial: " << counter << " - " << trial << std::endl;
 	std::vector<std::shared_ptr<const Sample>> minSamplesList = minSample->getMinSamplesList();

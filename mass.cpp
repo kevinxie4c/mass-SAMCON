@@ -106,6 +106,11 @@ int main(int argc, char* argv[])
 	    initMean.push_back(Eigen::VectorXd::Zero(Config::rank));
 
     cout << "duration: " << timer.durationToString() << endl;;
+    if (Config::generateSamplesFile)
+    {
+	if (!Utility::dirExists("samples"))
+	    Utility::createDir("samples");
+    }
     while (rounds--)
     {
 	Timer t;

@@ -48,11 +48,13 @@ class BVHData
 
 	size_t getChannelSize() const;
 
+	Eigen::VectorXd toEulerAngle(Eigen::VectorXd pose) const;
+
 	std::vector<Eigen::VectorXd> frameToEulerAngle() const;
 
-	std::vector<Eigen::VectorXd> frameToEulerAngle(std::vector<Eigen::VectorXd> targetFrame) const;
+	std::vector<Eigen::VectorXd> frameToEulerAngle(const std::vector<Eigen::VectorXd> &targetFrame) const;
 
-	std::vector<Eigen::VectorXd> eulerAngleToFrame(std::vector<Eigen::VectorXd> rawFrame) const;
+	std::vector<Eigen::VectorXd> eulerAngleToFrame(const std::vector<Eigen::VectorXd> &rawFrame) const;
 
     private:
 	// data

@@ -73,6 +73,7 @@ namespace Config
 	bool showWindow = false;
 	bool onlyLogAndFinal = false;
 	size_t loopNum = 50;
+	bool generateSamplesFile = false;
 
 };
 
@@ -206,6 +207,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	notImproveMax = std::stoi(value);
     else if (parameter == "loopNum")
 	loopNum = std::stoi(value);
+    else if (parameter == "generateSamplesFile")
+	generateSamplesFile = std::stoi(value);
     else if (parameter == "endEffectorFileName")
 	endEffectorFileName = value;
     else if (parameter == "leftFootFileName")

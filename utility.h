@@ -52,6 +52,8 @@ namespace Utility
 
     Eigen::MatrixXd readMatrixXdFrom(const std::string &filename);
 
+    bool dirExists(std::string name);
+    void createDir(std::string name);
 
     extern std::vector<std::string> endEffectorName;
     extern size_t rootIndex;
