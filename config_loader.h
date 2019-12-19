@@ -69,12 +69,14 @@ namespace Config
 	extern bool useInverseForce;
 	extern bool useEigenvector;
 	extern bool useEigenvalue;
+	extern std::string flexibleJointsFileName;
 
 	// others
 	extern bool showWindow;
 	extern bool onlyLogAndFinal;
 	extern size_t loopNum;
 	extern bool generateSamplesFile;
+
 
 	void load(const std::string &filename);
 

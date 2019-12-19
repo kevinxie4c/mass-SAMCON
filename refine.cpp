@@ -30,12 +30,41 @@ void refine(bool useMass)
 	    Utility::createDir(name);
     }
 
+    size_t numFlexibleDof = 0;
+    vector<VectorXd> flexibleBaseList;
+    if (useMass && Config::flexibleJointsFileName != "") {
+	vector<string> jointNames = Utility::readListFrom<string>(Config::flexibleJointsFileName);
+	for (const DegreeOfFreedom *dof: Utility::bvhs[omp_get_thread_num()].skeleton->getDofs())
+	{
+	    bool isFlexible = false;
+	    for (const string &name: jointNames)
+		if (dof->getName().find(name) != string::npos)
+		{
+		    isFlexible = true;
+		    break;
+		}
+	    if (isFlexible)
+	    {
+		VectorXd base(VectorXd::Zero(Utility::ndof));
+		base[dof->getIndexInSkeleton()] = 1;
+		flexibleBaseList.push_back(base);
+	    }
+	}
+    }
+    MatrixXd flexibleBases(Utility::ndof, flexibleBaseList.size());
+    for (size_t i = 0; i < flexibleBaseList.size(); ++i)
+	flexibleBases.col(i) = flexibleBaseList[i];
+
     static double sigmaMax = Config::initSigma;
     size_t trial = 0;
     vector<WeirdCMAES> cmaes;
+    if (initMean.empty())
+	for (size_t i = 0; i < walk.size(); ++i)
+	    initMean.push_back(Eigen::VectorXd::Zero(Config::rank + flexibleBaseList.size()));
     cout << initMean[0] << endl;
+
     for (size_t i = 0; i < walk.size(); ++i)
-	cmaes.push_back(WeirdCMAES(Config::rank, Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i]));
+	cmaes.push_back(WeirdCMAES(Config::rank + flexibleBaseList.size(), Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i]));
     vector<size_t> generation(walk.size(), 0);
     vector<size_t> notImprove(walk.size(), 0);
     vector<double> minCost(walk.size(), DBL_MAX);
@@ -98,7 +127,14 @@ void refine(bool useMass)
 		    VectorXd kernel = cmaes[i].getSample();
 		    VectorXd delta;
 		    if (useMass)
-			delta = frag.transformation.leftCols(Config::rank + 6).rightCols(Config::rank) * kernel;
+		    {
+			MatrixXd transform(Utility::ndof, Config::rank + flexibleBaseList.size());
+			if (flexibleBaseList.size() == 0)
+			    transform = frag.transformation.leftCols(Config::rank + 6).rightCols(Config::rank);
+			else
+			    transform << frag.transformation.leftCols(Config::rank + 6).rightCols(Config::rank), flexibleBases;
+			delta = transform * kernel;
+		    }
 		    else
 			delta = kernel;
 		    shared_ptr<Sample> t = make_shared<Sample>(sample, frag, delta, kernel, simulators[omp_get_thread_num()]);
@@ -222,7 +258,7 @@ void refine(bool useMass)
 		std::vector<std::shared_ptr<Sample>> &tmp = savedSamples[i + 1];
 		std::priority_queue<std::shared_ptr<Sample>, std::vector<std::shared_ptr<Sample>>, SampleComparison> tQueue(tmp.cbegin(), tmp.cend());
 		//Eigen::MatrixXd X(Config::rank + Config::dRank * (counter - 1), Config::saveNum);
-		Eigen::MatrixXd X(Config::rank, Config::saveNum);
+		Eigen::MatrixXd X(Config::rank + flexibleBaseList.size(), Config::saveNum);
 		size_t h = 0;
 		double cost = 0;
 		for (size_t j = 0; j < Config::saveNum; ++j)
@@ -316,14 +352,13 @@ void refine(bool useMass)
     for (size_t i = 1; i < savedSamples.size(); ++i)
     {
 	size_t h = 0;
-	initMean[i - 1] = Eigen::VectorXd::Zero(Config::rank);
+	initMean[i - 1] = Eigen::VectorXd::Zero(Config::rank + flexibleBaseList.size());
 	Eigen::VectorXd mean = Eigen::VectorXd::Zero(Utility::ndof);
 	for (const std::shared_ptr<Sample> &s: savedSamples[i])
 	{
 	    if (s->height >= 4)
 	    {
-		initMean[i - 1] += s->kernel * s->height;
-		h += s->height;
+		initMean[i - 1] += s->kernel * s->height; h += s->height;
 		mean += s->delta * s->height;
 	    }
 	}
@@ -334,7 +369,7 @@ void refine(bool useMass)
 	}
 	else
 	{
-	    initMean[i - 1] = Eigen::VectorXd::Zero(Config::rank);
+	    initMean[i - 1] = Eigen::VectorXd::Zero(Config::rank + flexibleBaseList.size());
 	    mean = Eigen::VectorXd::Zero(Utility::ndof);
 	}
 	std::ofstream output;
@@ -368,8 +403,10 @@ void refine(bool useMass)
     Config::initSigma *= 0.7;
     for (VectorXd &m: initMean)
     {
-	VectorXd v = m;
-	m = VectorXd::Zero(Config::rank);
+	VectorXd v = m.head(tRank);
+	VectorXd w = m.tail(flexibleBaseList.size());
+	m = VectorXd::Zero(Config::rank + flexibleBaseList.size());
 	m.head(tRank) = v;
+	m.tail(flexibleBaseList.size()) = w;
     }
 }

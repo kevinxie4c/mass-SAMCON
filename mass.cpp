@@ -101,9 +101,6 @@ int main(int argc, char* argv[])
     // full rank if we are using original algorithm
     if (!useMass)
 	Config::rank = Utility::ndof;
-    if (initMean.empty())
-	for (size_t i = 0; i < walk.size(); ++i)
-	    initMean.push_back(Eigen::VectorXd::Zero(Config::rank));
 
     cout << "duration: " << timer.durationToString() << endl;;
     if (Config::generateSamplesFile)

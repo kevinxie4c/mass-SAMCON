@@ -68,6 +68,7 @@ namespace Config
 	bool useInverseForce = false;
 	bool useEigenvector = false;
 	bool useEigenvalue = false;
+	std::string flexibleJointsFileName;
 
 	// others
 	bool showWindow = false;
@@ -199,6 +200,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	useEigenvector = std::stoi(value);
     else if (parameter == "useEigenvalue")
 	useEigenvalue = std::stoi(value);
+    else if (parameter == "flexibleJointsFileName")
+	flexibleJointsFileName = value;
     else if (parameter == "trialMax")
 	trialMax = std::stoi(value);
     else if (parameter == "trialMin")
