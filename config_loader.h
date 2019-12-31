@@ -70,6 +70,7 @@ namespace Config
 	extern bool useEigenvector;
 	extern bool useEigenvalue;
 	extern std::string flexibleJointsFileName;
+	extern std::string forceFileName;
 
 	// others
 	extern bool showWindow;

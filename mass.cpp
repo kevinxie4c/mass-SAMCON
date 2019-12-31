@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 
     if (Config::useInverseForce)
     {
-	forces = Utility::readVectorXdListFrom("force.txt");
+	forces = Utility::readVectorXdListFrom(Config::forceFileName);
 	forces = std::vector<Eigen::VectorXd>(forces.cbegin() + Config::startFrame, forces.cbegin() + Config::endFrame);
     }
     else
