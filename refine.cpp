@@ -178,10 +178,10 @@ void refine(bool useMass)
 	    if (tmp.back()->cost < minCost[i])
 	    {
 		minCost[i] = tmp.back()->cost;
-		notImprove[i] = 0;
+		//notImprove[i] = 0;
 	    }
-	    else
-		++notImprove[i];
+	    //else
+		//++notImprove[i];
 	    if (i + 1 < savedSamples.size()) // save at i + 1 instead of i
 		savedSamples[i + 1] = tmp;
 	    else
@@ -283,6 +283,7 @@ void refine(bool useMass)
 	    for (size_t i = 0; i < i_end + 1; ++i)
 		backupSamples.push_back(savedSamples[i]);
 	    backupMin = min;
+	    notImprove[i_begin] = 0;
 	}
 	else
 	{
@@ -292,6 +293,7 @@ void refine(bool useMass)
 		savedSamples.push_back(i);
 	    */
 	    savedSamples = backupSamples;
+	    ++notImprove[i_begin];
 	}
 	std::cout << std::endl;
 	for (size_t i = 0; i < walk.size(); ++i)
