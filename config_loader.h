@@ -16,7 +16,7 @@ namespace Config
 	extern size_t stepPerFrame;
 
 	// cost function
-	extern double wp, wr, we, wb;
+	extern double wp, wr, we, wb, w_zmp;
 
 	// file name
 	extern std::string bvhFileName;

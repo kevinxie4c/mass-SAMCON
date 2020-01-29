@@ -5,6 +5,7 @@
 *.cmake
 *.tar
 *.gz
+.tags
 CMakeFiles/
 Makefile
 !CMakeLists.txt

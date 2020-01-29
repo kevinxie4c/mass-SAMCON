@@ -15,7 +15,7 @@ namespace Config
 	size_t stepPerFrame;
 
 	// cost function
-	double wp= 5, wr = 3, we = 30, wb = 10;
+	double wp= 5, wr = 3, we = 30, wb = 10, w_zmp = 0;
 
 	// file name
 	std::string bvhFileName;
@@ -147,6 +147,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	we = std::stod(value);
     else if (parameter == "wb")
 	wb = std::stod(value);
+    else if (parameter == "w_zmp")
+	w_zmp = std::stod(value);
     else if (parameter == "covFileName")
 	covFileName = value;
     else if (parameter == "stiffnessFileName")

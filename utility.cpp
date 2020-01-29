@@ -1,4 +1,7 @@
 #include <iostream>
+#include <algorithm>
+#include <cmath>
+#include <dart/collision/ode/OdeCollisionDetector.hpp>
 #include <sys/stat.h>
 #include "utility.h"
 #ifdef _OPENMP
@@ -11,6 +14,12 @@
 
 // make setStateAt OMP safe
 static std::vector<dart::dynamics::SkeletonPtr> skeletons, t_skeletons; // for velocity computation
+/*
+static dart::dynamics::SkeletonPtr m_floor;
+static dart::collision::CollisionOption option;
+static dart::collision::CollisionResult result;
+static dart::collision::CollisionDetectorPtr collisionEngine = dart::collision::OdeCollisionDetector::create();
+*/
 
 namespace Utility
 {
@@ -272,6 +281,7 @@ void Utility::init()
 
     for (size_t i = 0; i < omp_get_max_threads(); ++i)
 	bvhs.push_back(mbvh);
+    //m_floor = createFloor();
 }
 
 dart::dynamics::SkeletonPtr Utility::createFloor()
@@ -551,7 +561,48 @@ double Utility::costFunc(const SkeletonPtr skeleton, ControlFragment &cf)
     err_b /= h * k;
     err_b += (skeleton->getCOMLinearVelocity() - cf.endCOMVel).norm() * 0.1;
 
-    return Config::wp * err_p + Config::wr * err_r + Config::we * err_e + Config::wb * err_b;
+    /*
+    auto leftFootGroup = collisionEngine->createCollisionGroup(skeleton->getBodyNode(leftFootIndex));
+    auto rightFootGroup = collisionEngine->createCollisionGroup(skeleton->getBodyNode(rightFootIndex));
+    auto floorGroup = collisionEngine->createCollisionGroup(m_floor.get());
+    bool leftCollision = floorGroup->collide(leftFootGroup.get(), option, &result);
+    bool rightCollision = floorGroup->collide(rightFootGroup.get(), option, &result);
+    */
+
+    // TODO: confirm the following computation of dL is correct
+    Eigen::Vector3d dL = Eigen::Vector3d::Zero(); // rate of angular momentum at center of mass
+    Eigen::Vector3d com = skeleton->getCOM();
+    for (const BodyNode *bn: skeleton->getBodyNodes())
+    {
+	dL += (bn->getCOM() - com).cross(bn->getMass() * bn->getCOMLinearAcceleration());
+
+	Eigen::Matrix3d R = bn->getTransform().rotation();
+	Eigen::Matrix3d I = bn->getInertia().getMoment(); // moment of inertia in local frame
+	Eigen::Vector3d omiga = bn->getCOMSpatialVelocity().head(3); // angular velocity in local frame
+	Eigen::Vector3d dOmiga = bn->getCOMSpatialAcceleration().head(3); // angular acceleration in local frame
+
+	dL += R * (I * dOmiga + omiga.cross(I * omiga));
+    }
+
+    double m = skeleton->getMass();
+    Eigen::Vector3d g(0, Config::gravity, 0);
+    Eigen::Vector3d F_gi = m * (g - skeleton->getCOMLinearAcceleration());
+    Eigen::Vector3d P(com.x(), Config::groundOffset, com.z());
+    Eigen::Vector3d vPG = com - P;
+    Eigen::Vector3d M_gi_P = vPG.cross(m * g) - vPG.cross(m * skeleton->getCOMLinearAcceleration()) - dL;
+    Eigen::Vector3d vn(0, 1, 0);
+    Eigen::Vector3d vPZ = vn.cross(M_gi_P) / F_gi.dot(vn);
+    Eigen::Vector3d zmp = P + vPZ;
+    Eigen::Vector3d pL = skeleton->getBodyNode(leftFootIndex)->getCOM();
+    Eigen::Vector3d pR = skeleton->getBodyNode(rightFootIndex)->getCOM();
+    pL.y() = pR.y() = Config::groundOffset;
+    double d = std::min(
+	    std::min((zmp - pL).norm(), (zmp - pR).norm()),
+	    std::abs((pR - pL).normalized().dot(zmp - pL))
+	    );
+
+
+    return Config::wp * err_p + Config::wr * err_r + Config::we * err_e + Config::wb * err_b + (d > 0.2 ? (d - 0.2) * Config::w_zmp : 0);
 }
 
 bool Utility::fileGood(const std::string &filename)
