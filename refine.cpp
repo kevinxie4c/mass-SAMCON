@@ -146,6 +146,7 @@ void refine(bool useMass)
 			fout << Utility::bvhs[omp_get_thread_num()].toEulerAngle(t->resultPose).transpose() << endl;
 			fout << Utility::bvhs[omp_get_thread_num()].toEulerAngle(t->ref).transpose() << endl;
 			fout << t->cost << endl;
+			fout << t->zmp.transpose() << endl;
 			fout.close();
 		    }
 

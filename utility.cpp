@@ -475,7 +475,7 @@ double Utility::costFunc(const SkeletonPtr skeleton, size_t index)
 }
 */
 
-double Utility::costFunc(const SkeletonPtr skeleton, ControlFragment &cf)
+double Utility::costFunc(const SkeletonPtr skeleton, ControlFragment &cf, Eigen::Vector3d &zmp)
 {
     std::vector<dart::dynamics::Joint*> joints = skeleton->getJoints();
     static size_t n = joints.size();
@@ -592,7 +592,8 @@ double Utility::costFunc(const SkeletonPtr skeleton, ControlFragment &cf)
     Eigen::Vector3d M_gi_P = vPG.cross(m * g) - vPG.cross(m * skeleton->getCOMLinearAcceleration()) - dL;
     Eigen::Vector3d vn(0, 1, 0);
     Eigen::Vector3d vPZ = vn.cross(M_gi_P) / F_gi.dot(vn);
-    Eigen::Vector3d zmp = P + vPZ;
+    //Eigen::Vector3d zmp = P + vPZ;
+    zmp = P + vPZ;
     Eigen::Vector3d pL = skeleton->getBodyNode(leftFootIndex)->getCOM();
     Eigen::Vector3d pR = skeleton->getBodyNode(rightFootIndex)->getCOM();
     pL.y() = pR.y() = Config::groundOffset;

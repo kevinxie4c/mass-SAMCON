@@ -17,6 +17,7 @@ class Sample: public std::enable_shared_from_this<Sample>
 	Eigen::VectorXd ref;
 	Eigen::VectorXd resultPose;
 	Eigen::VectorXd resultVel;
+	Eigen::Vector3d zmp;
 	double totalCost = 0; // total cost from ascendant to sample
 	double accumCost = 0; // accumulative cost of the best path from the sample to the leaves
 	size_t height = 0;

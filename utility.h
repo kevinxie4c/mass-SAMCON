@@ -27,7 +27,7 @@ namespace Utility
     /* for improving SAMCON
        double costFunc(const dart::dynamics::SkeletonPtr, size_t index);
     */
-    double costFunc(const dart::dynamics::SkeletonPtr, ControlFragment &cf);
+    double costFunc(const dart::dynamics::SkeletonPtr, ControlFragment &cf, Eigen::Vector3d &zmp);
 
     template<typename T> std::vector<T> readListFrom(const std::string &filename)
     {
