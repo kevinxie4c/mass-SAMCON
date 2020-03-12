@@ -475,7 +475,7 @@ double Utility::costFunc(const SkeletonPtr skeleton, size_t index)
 }
 */
 
-double Utility::costFunc(const SkeletonPtr skeleton, ControlFragment &cf, Eigen::Vector3d &zmp)
+double Utility::costFunc(const SkeletonPtr skeleton, ControlFragment &cf, Eigen::Vector3d &zmp, ErrorTerms &et)
 {
     std::vector<dart::dynamics::Joint*> joints = skeleton->getJoints();
     static size_t n = joints.size();
@@ -602,8 +602,13 @@ double Utility::costFunc(const SkeletonPtr skeleton, ControlFragment &cf, Eigen:
 	    std::abs((pR - pL).normalized().dot(zmp - pL))
 	    );
 
-
-    return Config::wp * err_p + Config::wr * err_r + Config::we * err_e + Config::wb * err_b + (d > 0.2 ? (d - 0.2) * Config::w_zmp : 0);
+    double err_zmp = d > 0.2 ? d - 0.2  : 0;
+    et.err_p = err_p;
+    et.err_r = err_r;
+    et.err_e = err_e;
+    et.err_b = err_b;
+    et.err_zmp = err_zmp;
+    return Config::wp * err_p + Config::wr * err_r + Config::we * err_e + Config::wb * err_b + Config::w_zmp * err_zmp;
 }
 
 bool Utility::fileGood(const std::string &filename)

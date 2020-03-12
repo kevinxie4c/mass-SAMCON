@@ -38,7 +38,7 @@ void refine(bool useMass)
 	{
 	    bool isFlexible = false;
 	    for (const string &name: jointNames)
-		if (dof->getName().find(name) != string::npos)
+		if (dof->getName().find(name) != string::npos) // might introduce bugs here?
 		{
 		    isFlexible = true;
 		    break;
@@ -166,7 +166,14 @@ void refine(bool useMass)
 		    tmp.push_back(queue.top());
 		queue.pop();
 	    }
-	    cout << tmp.back()->cost << endl;
+	    double w = cout.width();
+	    double p = cout.precision();
+	    cout.width(8);
+	    cout.precision(5);
+	    auto &ptr = tmp.back();
+	    cout << ptr->cost << " (" << ptr->et.err_p << ptr->et.err_r << ptr->et.err_e << ptr->et.err_b << ptr->et.err_zmp << ")" << endl;
+	    cout.width(w);
+	    cout.precision(p);
 	    if (tmp.back()->cost > Config::failThreshold)
 	    {
 		i_end = i;

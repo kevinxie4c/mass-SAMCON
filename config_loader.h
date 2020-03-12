@@ -71,6 +71,7 @@ namespace Config
 	extern bool useEigenvalue;
 	extern std::string flexibleJointsFileName;
 	extern std::string forceFileName;
+	extern std::string noIDJointsFileName;
 
 	// others
 	extern bool showWindow;

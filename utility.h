@@ -24,10 +24,15 @@ namespace Utility
     // set position and velocity at index
     void setStateAt(size_t index, Eigen::VectorXd &pose, Eigen::VectorXd &vel);
 
+    struct ErrorTerms
+    {
+	double err_p, err_r, err_e, err_b, err_zmp;
+    };
+
     /* for improving SAMCON
        double costFunc(const dart::dynamics::SkeletonPtr, size_t index);
     */
-    double costFunc(const dart::dynamics::SkeletonPtr, ControlFragment &cf, Eigen::Vector3d &zmp);
+    double costFunc(const dart::dynamics::SkeletonPtr, ControlFragment &cf, Eigen::Vector3d &zmp, ErrorTerms &et);
 
     template<typename T> std::vector<T> readListFrom(const std::string &filename)
     {

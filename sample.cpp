@@ -29,7 +29,7 @@ Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen:
     {
 	resultPose = sim.skeleton->getPositions();
 	resultVel = sim.skeleton->getVelocities();
-	cost = Utility::costFunc(sim.skeleton, cf, zmp);
+	cost = Utility::costFunc(sim.skeleton, cf, zmp, et);
 	totalCost = parent->totalCost + cost;
 	accumCost = cost;
 	if (parent != nullptr)

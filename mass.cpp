@@ -84,6 +84,28 @@ int main(int argc, char* argv[])
     }
     else
 	forces = std::vector<Eigen::VectorXd>(Config::endFrame - Config::startFrame, Eigen::VectorXd::Zero(Utility::ndof));
+
+    // Zero out unnecessary force
+    if (Config::noIDJointsFileName != "")
+    {
+	vector<string> jointNames = Utility::readListFrom<string>(Config::noIDJointsFileName);
+	for (const DegreeOfFreedom *dof: Utility::bvhs[omp_get_thread_num()].skeleton->getDofs())
+	{
+	    bool noForce = false;
+	    for (const string &name: jointNames)
+		if (dof->getName().find(name) != string::npos) // might indroduce bugs here?
+		{
+		    noForce = true;
+		    break;
+		}
+	    if (noForce)
+	    {
+		for (VectorXd &v: forces)
+		    v[dof->getIndexInSkeleton()] = 0;
+	    }
+	}
+    }
+
     setUpFrags(useMass);
 
     for (size_t i = 0; i < Config::loopNum; ++i)

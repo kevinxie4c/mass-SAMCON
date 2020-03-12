@@ -11,6 +11,7 @@ class Sample: public std::enable_shared_from_this<Sample>
 {
     public:
 	double cost;
+	Utility::ErrorTerms et;
 	std::shared_ptr<Sample> parent = nullptr;
 	Eigen::VectorXd delta;
 	Eigen::VectorXd kernel;
