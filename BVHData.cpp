@@ -74,6 +74,7 @@ int BVHData::loadGeometryConfig(std::istream& input)
     size_t state = 0;
     std::shared_ptr<Shape> shape;
     std::string parent;
+    Eigen::Isometry3d ltf = Eigen::Isometry3d::Identity();
     Eigen::Isometry3d::VectorType tl;
     Eigen::Isometry3d::LinearMatrixType rot;
     Eigen::Isometry3d tf = Eigen::Isometry3d::Identity();
@@ -85,7 +86,12 @@ int BVHData::loadGeometryConfig(std::istream& input)
 	{
 	    case 0:
 		if (list[0] == "sphere")
-		    shape = std::shared_ptr<Shape>(new SphereShape(std::stod(list[1]) / this->scale));
+		{
+		    ltf.translation().x() = std::stod(list[1]) / this->scale;
+		    ltf.translation().y() = std::stod(list[2]) / this->scale;
+		    ltf.translation().z() = std::stod(list[3]) / this->scale;
+		    shape = std::shared_ptr<Shape>(new SphereShape(std::stod(list[4]) / this->scale));
+		}
 		else if (list[0] == "cube")
 		    shape = std::shared_ptr<Shape>(new BoxShape(Eigen::Vector3d(std::stod(list[1]) / this->scale, std::stod(list[2]) / this->scale, std::stod(list[3]) / this->scale)));
 		else if (list[0] == "cylinder")
@@ -105,7 +111,7 @@ int BVHData::loadGeometryConfig(std::istream& input)
 			* Eigen::AngleAxisd(std::stod(list[2]), Eigen::Vector3d::UnitZ());
 		    tf.translation() = tl;
 		    tf.linear() = rot;
-		    geometryConfig[parent].push_back(MyShapeNode(shape, tf));
+		    geometryConfig[parent].push_back(MyShapeNode(shape, tf * ltf));
 		    std::cout << parent << ":" << geometryConfig[parent].size() << std::endl;
 		break;
 	    default:
