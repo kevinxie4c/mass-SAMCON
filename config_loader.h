@@ -72,6 +72,9 @@ namespace Config
 	extern std::string flexibleJointsFileName;
 	extern std::string forceFileName;
 	extern std::string noIDJointsFileName;
+	extern bool useCompensator;
+	extern bool k_cmp;
+	extern bool d_cmp;
 
 	// others
 	extern bool showWindow;

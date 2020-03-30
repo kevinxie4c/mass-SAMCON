@@ -29,16 +29,20 @@ namespace Utility
     Eigen::MatrixXd mKp, mKd;
     size_t ndof;
 
+    // TODO: change name: xxxName -> xxxNameList
     std::vector<std::string> endEffectorName = { "Wrist", "Head", "Ankle", "Foot" };
-    std::vector<std::string> leftFootName = { "LeftAngle", "LeftFoot" };
-    std::vector<std::string> rightFootName = { "RightAnkle", "RightFoot" };
+    std::vector<std::string> leftFootNameList = { "LeftAngle", "LeftFoot" };
+    std::vector<std::string> rightFootNameList = { "RightAnkle", "RightFoot" };
     std::vector<std::string> waistName = { "Abdomen" };
-    std::vector<std::string> leftHipName = { "LeftHip" };
-    std::vector<std::string> rightHipName = { "RightHip" };
+    std::vector<std::string> leftHipNameList = { "LeftHip" };
+    std::vector<std::string> rightHipNameList = { "RightHip" };
     std::vector<std::string> leftKneeName = { "LeftKnee" };
     std::vector<std::string> rightKneeName = { "RightKnee" };
+    std::string leftFootName;
+    std::string rightFootName;
     size_t rootIndex = 0;
     size_t leftFootIndex, rightFootIndex;
+    size_t leftHipDofIdx, rightHipDofIdx;
     size_t waistIndex, leftHipIndex, rightHipIndex, leftKneeIndex, rightKneeIndex;
     std::vector<size_t> endEffectorIndex;
 
@@ -59,15 +63,15 @@ void Utility::init()
     if (Config::endEffectorFileName != "")
 	endEffectorName= readListFrom<std::string>(Config::endEffectorFileName);
     if (Config::leftFootFileName != "")
-	leftFootName = readListFrom<std::string>(Config::leftFootFileName);
+	leftFootNameList = readListFrom<std::string>(Config::leftFootFileName);
     if (Config::rightFootFileName != "")
-	rightFootName = readListFrom<std::string>(Config::rightFootFileName);
+	rightFootNameList = readListFrom<std::string>(Config::rightFootFileName);
     if (Config::waistFileName != "")
 	waistName = readListFrom<std::string>(Config::waistFileName);
     if (Config::leftHipFileName != "")
-	leftHipName = readListFrom<std::string>(Config::leftHipFileName);
+	leftHipNameList = readListFrom<std::string>(Config::leftHipFileName);
     if (Config::rightHipFileName != "")
-	rightHipName = readListFrom<std::string>(Config::rightHipFileName);
+	rightHipNameList = readListFrom<std::string>(Config::rightHipFileName);
     if (Config::leftKneeFileName != "")
 	leftKneeName = readListFrom<std::string>(Config::leftKneeFileName);
     if (Config::rightKneeFileName != "")
@@ -196,10 +200,11 @@ void Utility::init()
     bool found = false;
     for (size_t i = 0; i < mbvh.skeleton->getBodyNodes().size() && !found; ++i)
     {
-	for (const std::string& str: leftFootName)
+	for (const std::string& str: leftFootNameList)
 	    if (mbvh.skeleton->getBodyNodes()[i]->getName().find(str) != std::string::npos)
 	    {
 		leftFootIndex = i;
+		leftFootName = mbvh.skeleton->getBodyNodes()[i]->getName();
 		found = true;
 		break;
 	    }
@@ -207,16 +212,39 @@ void Utility::init()
     found = false;
     for (size_t i = 0; i < mbvh.skeleton->getBodyNodes().size() && !found; ++i)
     {
-	for (const std::string& str: rightFootName)
+	for (const std::string& str: rightFootNameList)
 	    if (mbvh.skeleton->getBodyNodes()[i]->getName().find(str) != std::string::npos)
 	    {
 		rightFootIndex = i;
+		rightFootName = mbvh.skeleton->getBodyNodes()[i]->getName();
 		found = true;
 		break;
 	    }
     }
+    found = false;
+    for (size_t i = 0; i < mbvh.skeleton->getDofs().size() && !found; ++i)
+    {
+	for (const std::string& str: leftHipNameList)
+	    if (mbvh.skeleton->getDofs()[i]->getName().find(str) != std::string::npos)
+	    {
+		leftHipDofIdx = i;
+		found = true;
+	    }
+    }
+    found = false;
+    for (size_t i = 0; i < mbvh.skeleton->getDofs().size() && !found; ++i)
+    {
+	for (const std::string& str: rightHipNameList)
+	    if (mbvh.skeleton->getDofs()[i]->getName().find(str) != std::string::npos)
+	    {
+		rightHipDofIdx = i;
+		found = true;
+	    }
+    }
     std::cout << "leftFootIndex = " << leftFootIndex << std::endl;
     std::cout << "rightFootIndex = " << rightFootIndex << std::endl;
+    std::cout << "leftFootDofIdx = " << leftHipDofIdx << std::endl;
+    std::cout << "rightFootDofIdx = " << rightHipDofIdx << std::endl;
 
     found = false;
     for (size_t i = 0; i < mbvh.skeleton->getJoints().size() && !found; ++i)
@@ -232,7 +260,7 @@ void Utility::init()
     found = false;
     for (size_t i = 0; i < mbvh.skeleton->getJoints().size() && !found; ++i)
     {
-	for (const std::string& str: leftHipName)
+	for (const std::string& str: leftHipNameList)
 	    if (mbvh.skeleton->getJoint(i)->getName().find(str) != std::string::npos)
 	    {
 		leftHipIndex = i;
@@ -243,7 +271,7 @@ void Utility::init()
     found = false;
     for (size_t i = 0; i < mbvh.skeleton->getJoints().size() && !found; ++i)
     {
-	for (const std::string& str: rightHipName)
+	for (const std::string& str: rightHipNameList)
 	    if (mbvh.skeleton->getJoint(i)->getName().find(str) != std::string::npos)
 	    {
 		rightHipIndex = i;

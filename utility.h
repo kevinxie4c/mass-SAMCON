@@ -63,7 +63,9 @@ namespace Utility
     extern std::vector<std::string> endEffectorName;
     extern size_t rootIndex;
     extern size_t waistIndex, leftHipIndex, rightHipIndex, leftKneeIndex, rightKneeIndex;
+    extern std::string leftFootName, rightFootName;
     extern size_t leftFootIndex, rightFootIndex;
+    extern size_t leftHipDofIdx, rightHipDofIdx;
     extern std::vector<size_t> endEffectorIndex;
 
     // for cost function

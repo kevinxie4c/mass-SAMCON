@@ -71,6 +71,13 @@ namespace Config
 	std::string flexibleJointsFileName;
 	std::string forceFileName;
 	std::string noIDJointsFileName;
+	bool useCompensator = false;
+	bool k_cmp = 500;
+	bool d_cmp = 25;
+	std::string leftFootName;
+	std::string rightFootName;
+	std::string leftHipName;
+	std::string rightHipName;
 
 	// others
 	bool showWindow = false;
@@ -236,6 +243,12 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	leftKneeFileName = value;
     else if (parameter == "rightKneeFileName")
 	rightKneeFileName = value;
+    else if (parameter == "useCompensator")
+	useCompensator = std::stoi(value);
+    else if (parameter == "k_cmp")
+	k_cmp = std::stod(value);
+    else if (parameter == "d_cmp")
+	d_cmp = std::stod(value);
     else
 	std::cout << "warning: " << parameter << " is not set" << std::endl;
 

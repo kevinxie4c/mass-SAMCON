@@ -16,6 +16,7 @@ class Simulator
 	dart::dynamics::SkeletonPtr floor;
 	dart::constraint::ConstraintSolver *solver;
 	dart::collision::CollisionDetectorPtr detector;
+	dart::collision::CollisionGroupPtr skeletonGroup, floorGroup;
 
 	Simulator(BVHData &bvh);
 

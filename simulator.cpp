@@ -15,6 +15,8 @@ Simulator::Simulator(BVHData &bvh)
     solver = world->getConstraintSolver();
     solver->setLCPSolver(dart::common::make_unique<dart::constraint::PGSLCPSolver>(world->getTimeStep()));
     solver->setCollisionDetector(detector = dart::collision::OdeCollisionDetector::create());
+    skeletonGroup = detector->createCollisionGroup(skeleton.get());
+    floorGroup = detector->createCollisionGroup(floor.get());
 }
 
 void Simulator::setPose(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel)
@@ -31,6 +33,35 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 {
     for (size_t i = 0; i < Config::groupNum; ++i)
     {
+	Eigen::Vector3d rightHipForce;
+	if (Config::useCompensator)
+	{
+	    bool rightFootInAir = true;
+	    dart::collision::CollisionResult result;
+	    dart::collision::CollisionOption option;
+	    if (skeletonGroup->collide(floorGroup.get(), option, &result))
+	    {
+		for (auto it: result.getCollidingBodyNodes())
+		{
+		    if (it->getName() == Utility::rightFootName)
+		    {
+			rightFootInAir = false;
+			break;
+		    }
+		}
+	    }
+	    if (rightFootInAir)
+	    {
+		BodyNode *rightFoot = skeleton->getBodyNode(Utility::rightFootIndex);
+		Eigen::MatrixXd jac = skeleton->getLinearJacobian(rightFoot, rightFoot->getLocalCOM());
+		Eigen::MatrixXd J = jac.block(0, Utility::rightHipDofIdx, 3, 3);
+		Eigen::Vector3d x = skeleton->getCOM() - rightFoot->getCOM();
+		Eigen::Vector3d dx = rightFoot->getCOMLinearVelocity();
+		x.y() = 0;
+		dx.y() = 0;
+		rightHipForce = J.transpose() * (Config::k_cmp * x - Config::d_cmp * dx);
+	    }
+	}
 	if (Config::stablePD)
 	{
 	    Eigen::VectorXd q = skeleton->getPositions();
@@ -40,6 +71,7 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 	    Eigen::VectorXd d = -Utility::mKd * dq;
 	    Eigen::VectorXd qddot = invM * (-skeleton->getCoriolisAndGravityForces() + p + d + skeleton->getConstraintForces());
 	    Eigen::VectorXd force = p + d -Utility::mKd * qddot * skeleton->getTimeStep() + iforce[i];
+	    force.segment(Utility::rightHipDofIdx, 3) += rightHipForce;
 	    //Eigen::VectorXd force = iforce[i];
 #ifndef NDEBUG
 	    forces.push_back(force);
@@ -60,6 +92,7 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 		Eigen::VectorXd d = -Utility::mKd * dq;
 		// forces.size() != groupNum. need to fix
 		Eigen::VectorXd force = p + d + iforce[i];
+		force.segment(Utility::rightHipDofIdx, 3) += rightHipForce;
 #ifndef NDEBUG
 		forces.push_back(force);
 #endif
