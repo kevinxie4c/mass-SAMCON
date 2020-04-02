@@ -59,7 +59,10 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 		Eigen::Vector3d dx = rightFoot->getCOMLinearVelocity();
 		x.y() = 0;
 		dx.y() = 0;
-		rightHipForce = J.transpose() * (Config::k_cmp * x - Config::d_cmp * dx);
+		double l = sqrt(dx.norm() * dx.norm() * x.y() / Config::gravity);
+		Eigen::Vector3d desire = l * dx.normalized();
+		Eigen::Vector3d diff = desire + x; // desire - (-x);
+		rightHipForce = J.transpose() * (Config::k_cmp * diff - Config::d_cmp * dx);
 	    }
 	}
 	if (Config::stablePD)
