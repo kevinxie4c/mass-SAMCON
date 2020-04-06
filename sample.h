@@ -33,7 +33,7 @@ class Sample: public std::enable_shared_from_this<Sample>
 
 	Sample(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel);
 
-	Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen::VectorXd &delta, const Eigen::VectorXd &kernel, Simulator &sim);
+	Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen::VectorXd &delta, const Eigen::VectorXd &kernel, Simulator &sim, bool useID);
 
 	std::vector<Eigen::VectorXd> getTarget();
 

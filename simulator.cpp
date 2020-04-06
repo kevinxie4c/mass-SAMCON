@@ -26,9 +26,9 @@ void Simulator::setPose(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel)
 }
 
 #ifdef NDEBUG
-bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory)
+bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, bool useID)
 #else
-bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces)
+bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces, bool useID)
 #endif
 {
     for (size_t i = 0; i < Config::groupNum; ++i)
@@ -73,7 +73,9 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 	    Eigen::VectorXd p = -Utility::mKp * skeleton->getPositionDifferences(q + dq * skeleton->getTimeStep(), ref);
 	    Eigen::VectorXd d = -Utility::mKd * dq;
 	    Eigen::VectorXd qddot = invM * (-skeleton->getCoriolisAndGravityForces() + p + d + skeleton->getConstraintForces());
-	    Eigen::VectorXd force = p + d -Utility::mKd * qddot * skeleton->getTimeStep() + iforce[i];
+	    Eigen::VectorXd force = p + d -Utility::mKd * qddot * skeleton->getTimeStep();
+	    if (useID)
+	       	force += iforce[i];
 	    force.segment(Utility::rightHipDofIdx, 3) += rightHipForce;
 	    //Eigen::VectorXd force = iforce[i];
 #ifndef NDEBUG

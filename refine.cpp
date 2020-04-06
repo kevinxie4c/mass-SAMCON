@@ -137,7 +137,8 @@ void refine(bool useMass)
 		    }
 		    else
 			delta = kernel;
-		    shared_ptr<Sample> t = make_shared<Sample>(sample, frag, delta, kernel, simulators[omp_get_thread_num()]);
+		    bool useID = k < Config::sampleNum / samples.size() * 0.5 ? true : false;
+		    shared_ptr<Sample> t = make_shared<Sample>(sample, frag, delta, kernel, simulators[omp_get_thread_num()], useID);
 		    
 		    if (Config::generateSamplesFile)
 		    {

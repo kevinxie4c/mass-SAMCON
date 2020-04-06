@@ -75,6 +75,7 @@ namespace Config
 	extern bool useCompensator;
 	extern bool k_cmp;
 	extern bool d_cmp;
+	extern double inverseForceRatio;
 
 	// others
 	extern bool showWindow;

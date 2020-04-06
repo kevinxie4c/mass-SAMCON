@@ -78,6 +78,7 @@ namespace Config
 	std::string rightFootName;
 	std::string leftHipName;
 	std::string rightHipName;
+	double inverseForceRatio = 1.0;
 
 	// others
 	bool showWindow = false;
@@ -249,6 +250,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	k_cmp = std::stod(value);
     else if (parameter == "d_cmp")
 	d_cmp = std::stod(value);
+    else if (parameter == "inverseForceRatio")
+	inverseForceRatio = std::stod(value);
     else
 	std::cout << "warning: " << parameter << " is not set" << std::endl;
 

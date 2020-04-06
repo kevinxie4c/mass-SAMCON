@@ -11,7 +11,7 @@ Sample::Sample(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel): cost(0)
 #endif
 }
 
-Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen::VectorXd &delta, const Eigen::VectorXd &kernel, Simulator &sim): parent(parent)
+Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen::VectorXd &delta, const Eigen::VectorXd &kernel, Simulator &sim, bool useID): parent(parent)
 {
     sim.setPose(parent->resultPose, parent->resultVel);
     this->delta = delta;
@@ -22,9 +22,9 @@ Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen:
     if (Config::useAFT)
 	ref = sim.skeleton->getPositionDifferences(ref, -cf.aftOffset);
 #ifdef NDEBUG
-    if (sim.driveTo(ref, cf.iforces, trajectory))
+    if (sim.driveTo(ref, cf.iforces, trajectory, useID))
 #else
-    if (sim.driveTo(ref, cf.iforces, trajectory, com, mmt, forces))
+    if (sim.driveTo(ref, cf.iforces, trajectory, com, mmt, forces, useID))
 #endif
     {
 	resultPose = sim.skeleton->getPositions();
