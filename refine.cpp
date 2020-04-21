@@ -160,15 +160,18 @@ void refine(bool useMass)
 		}
 	    }
 	    vector<shared_ptr<Sample>> tmp;
+	    size_t numUseID = 0;
 	    while (!queue.empty())
 	    {
 		const shared_ptr<Sample> &t = queue.top();
 		if (!isnan(t->cost))
 		    tmp.push_back(queue.top());
+		if (t->useID)
+		    ++numUseID;
 		queue.pop();
 	    }
 	    auto &ptr = tmp.back();
-	    cout << ptr->cost << " (" << ptr->et.err_p << " " << ptr->et.err_r << " " << ptr->et.err_e << " " << ptr->et.err_b << " " << ptr->et.err_zmp << ")" << endl;
+	    cout << ptr->cost << " " << (double)numUseID / Config::saveNum << " (" << ptr->et.err_p << " " << ptr->et.err_r << " " << ptr->et.err_e << " " << ptr->et.err_b << " " << ptr->et.err_zmp << ")" << endl;
 	    if (tmp.back()->cost > Config::failThreshold)
 	    {
 		i_end = i;

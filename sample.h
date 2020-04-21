@@ -23,6 +23,7 @@ class Sample: public std::enable_shared_from_this<Sample>
 	double accumCost = 0; // accumulative cost of the best path from the sample to the leaves
 	size_t height = 0;
 	std::vector<Eigen::VectorXd> trajectory;
+	bool useID = false;
 #ifndef NDEBUG
 	std::vector<Eigen::Vector3d> com;
 	std::vector<Eigen::Vector3d> mmt;

@@ -16,6 +16,7 @@ Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen:
     sim.setPose(parent->resultPose, parent->resultVel);
     this->delta = delta;
     this->kernel = kernel;
+    this->useID = useID;
     for (size_t i = 0; i < 6; ++i)
 	this->delta[i] = 0;
     ref = cf.tracked + this->delta;
