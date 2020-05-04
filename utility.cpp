@@ -31,7 +31,7 @@ namespace Utility
 
     // TODO: change name: xxxName -> xxxNameList
     std::vector<std::string> endEffectorName = { "Wrist", "Head", "Ankle", "Foot" };
-    std::vector<std::string> leftFootNameList = { "LeftAngle", "LeftFoot" };
+    std::vector<std::string> leftFootNameList = { "LeftAnkle", "LeftFoot" };
     std::vector<std::string> rightFootNameList = { "RightAnkle", "RightFoot" };
     std::vector<std::string> waistName = { "Abdomen" };
     std::vector<std::string> leftHipNameList = { "LeftHip" };
