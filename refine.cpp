@@ -67,6 +67,7 @@ void refine(bool useMass)
 	cmaes.push_back(WeirdCMAES(Config::rank + flexibleBaseList.size(), Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i]));
     vector<size_t> generation(walk.size(), 0);
     vector<size_t> notImprove(walk.size(), 0);
+    vector<size_t> trialTimes(walk.size(), 0);
     vector<double> minCost(walk.size(), DBL_MAX);
     vector<size_t> maxHeight(walk.size(), 0);
     vector<double> minAccCost(walk.size(), DBL_MAX);
@@ -84,7 +85,6 @@ void refine(bool useMass)
 	tmpList.push_back(make_shared<Sample>(initPose, initVel));
     savedSamples.push_back(tmpList);
     size_t i_begin = 0, i_end, i_begin_backup = 0;
-    size_t trialTimes = 0;
     while (i_begin < walk.size())
     {
 	++trial;
@@ -105,6 +105,7 @@ void refine(bool useMass)
 	{
 	    cout << "i = " << i << endl;
 	    cout << "frag " << walk[i] << endl;
+	    ++trialTimes[i];
 
 	    if (Config::generateSamplesFile)
 	    {
@@ -137,7 +138,8 @@ void refine(bool useMass)
 		    }
 		    else
 			delta = kernel;
-		    bool useID = k < Config::sampleNum / samples.size() * 0.5 ? true : false;
+		    //bool useID = k < Config::sampleNum / samples.size() * 0.5 ? true : false;
+		    bool useID = true;
 		    shared_ptr<Sample> t = make_shared<Sample>(sample, frag, delta, kernel, simulators[omp_get_thread_num()], useID);
 		    
 		    if (Config::generateSamplesFile)
@@ -166,8 +168,8 @@ void refine(bool useMass)
 		const shared_ptr<Sample> &t = queue.top();
 		if (!isnan(t->cost))
 		    tmp.push_back(queue.top());
-		if (t->useID)
-		    ++numUseID;
+		//if (t->useID)
+		//    ++numUseID;
 		queue.pop();
 	    }
 	    auto &ptr = tmp.back();
@@ -315,6 +317,9 @@ void refine(bool useMass)
 	}
 	std::cout << std::endl;
 	for (size_t i = 0; i < walk.size(); ++i)
+	    std::cout << trialTimes[i] << " ";
+	std::cout << std::endl;
+	for (size_t i = 0; i < walk.size(); ++i)
 	    std::cout << cmaes[i].sigma << " ";
 	std::cout << std::endl;
 	/*
@@ -343,7 +348,6 @@ void refine(bool useMass)
 		++i_begin;
 	    }
 	}
-	trialTimes = 0;
     }
     std::shared_ptr<Sample> minSample = nullptr;
     double min = DBL_MAX;
