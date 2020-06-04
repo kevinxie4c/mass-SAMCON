@@ -338,6 +338,7 @@ void refine(bool useMass)
 	{
 	    // rollback to the last successfull trial if failed at the beginning
 	    i_begin = i_begin_backup;
+	    std::cout << "Failed at beginngin. Fall Back." << std::endl;
 	}
 	else
 	{
@@ -345,6 +346,12 @@ void refine(bool useMass)
 		i_begin_backup = i_begin;
 	    while (i_begin < walk.size() && (generation[i_begin] > Config::trialMax || notImprove[i_begin] > Config::notImproveMax || minCost[i_begin] < Config::goodEnough))
 	    {
+		if (generation[i_begin] > Config::trialMax)
+		    std::cout << "generation[i_begin] > Config::trialMax" << std::endl;
+		if (notImprove[i_begin] > Config::notImproveMax)
+		    std::cout << "notImprove[i_begin] > Config::notImproveMax" << std::endl;
+		if (minCost[i_begin] > Config::goodEnough)
+		    std::cout << "minCost[i_begin] > Config::goodEnough" << std::endl;
 		++i_begin;
 	    }
 	}
