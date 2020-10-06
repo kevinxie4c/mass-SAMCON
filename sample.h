@@ -27,8 +27,8 @@ class Sample: public std::enable_shared_from_this<Sample>
 #ifndef NDEBUG
 	std::vector<Eigen::Vector3d> com;
 	std::vector<Eigen::Vector3d> mmt;
-	std::vector<Eigen::VectorXd> forces;
 #endif
+	std::vector<Eigen::VectorXd> forces;
 
 	//Sample(Eigen::VectorXd pose): cost(0), parent(nullptr), resultPose(pose), resultVel(Eigen::VectorXd::Zero(bvh.getChannelSize())) {}
 

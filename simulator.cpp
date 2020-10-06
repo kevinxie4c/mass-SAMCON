@@ -26,7 +26,7 @@ void Simulator::setPose(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel)
 }
 
 #ifdef NDEBUG
-bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, bool useID)
+bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::VectorXd> &forces, bool useID)
 #else
 bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces, bool useID)
 #endif
@@ -78,9 +78,7 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 	       	force += iforce[i];
 	    force.segment(Utility::rightHipDofIdx, 3) += rightHipForce;
 	    //Eigen::VectorXd force = iforce[i];
-#ifndef NDEBUG
 	    forces.push_back(force);
-#endif
 	    for (size_t k = 0; k < Config::stepPerFrame; ++k)
 	    {
 		skeleton->setForces(force);
@@ -98,9 +96,7 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 		// forces.size() != groupNum. need to fix
 		Eigen::VectorXd force = p + d + iforce[i];
 		force.segment(Utility::rightHipDofIdx, 3) += rightHipForce;
-#ifndef NDEBUG
 		forces.push_back(force);
-#endif
 		skeleton->setForces(force);
 		world->step();
 	    }

@@ -118,12 +118,12 @@ void setUpFrags(bool useMass)
 	Utility::setStateAt(0, initPose, initVel);
 	sim.setPose(initPose, initVel);
 	vector<VectorXd> dummyTraj;
+	vector<VectorXd> dummyForces;
 #ifndef NDEBUG
 	vector<Vector3d> dummyCom, dummyMmt;
-	vector<VectorXd> dummyForces;
 	sim.driveTo(frags[0].tracked, frags[0].iforces, dummyTraj, dummyCom, dummyMmt, dummyForces, true);
 #else
-	sim.driveTo(frags[0].tracked, frags[0].iforces, dummyTraj, true);
+	sim.driveTo(frags[0].tracked, frags[0].iforces, dummyTraj, dummyForces, true);
 #endif
 	frags[0].aftOffset = Utility::bvhs[omp_get_thread_num()].skeleton->getPositionDifferences(frags[0].tracked, sim.skeleton->getPositions());
 
@@ -133,7 +133,7 @@ void setUpFrags(bool useMass)
 #ifndef NDEBUG
 	    sim.driveTo(frags[i].tracked, frags[i].iforces, dummyTraj, dummyCom, dummyMmt, dummyForces, true);
 #else
-	    sim.driveTo(frags[i].tracked, frags[i].iforces, dummyTraj, true);
+	    sim.driveTo(frags[i].tracked, frags[i].iforces, dummyTraj, dummyForces, true);
 #endif
 	    frags[i].aftOffset = Utility::bvhs[omp_get_thread_num()].skeleton->getPositionDifferences(frags[i].tracked, sim.skeleton->getPositions());
 	}

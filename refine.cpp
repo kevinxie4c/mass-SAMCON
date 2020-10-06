@@ -417,14 +417,17 @@ void refine(bool useMass)
     for (std::shared_ptr<const Sample> s: minSamplesList)
     {
 	output << s->delta.transpose() << std::endl;
+#ifndef NDEBUG
 	for (auto it: s->com)
 	    com.push_back(it);
 	for (auto it: s->mmt)
 	    mmt.push_back(it);
+#endif
 	for (auto it: s->forces)
 	    forces.push_back(it);
     }
     output.close();
+#ifndef NDEBUG
     output.open("com" + std::to_string(counter) + ".txt");
     for (const Eigen::VectorXd &v: com)
 	output << v.transpose() << std::endl;
@@ -433,6 +436,7 @@ void refine(bool useMass)
     for (const Eigen::VectorXd &v: mmt)
 	output << v.transpose() << std::endl;
     output.close();
+#endif
     output.open("forces" + std::to_string(counter) + ".txt");
     for (const Eigen::VectorXd &v: forces)
 	output << v.transpose() << std::endl;
