@@ -411,10 +411,33 @@ void refine(bool useMass)
     for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(minTrajectory))
 	output << v.transpose() << std::endl;
     output.close();
+
+    vector<VectorXd> com, mmt, forces;
     output.open("delta" + std::to_string(counter) + ".txt");
     for (std::shared_ptr<const Sample> s: minSamplesList)
+    {
 	output << s->delta.transpose() << std::endl;
+	for (auto it: s->com)
+	    com.push_back(it);
+	for (auto it: s->mmt)
+	    mmt.push_back(it);
+	for (auto it: s->forces)
+	    forces.push_back(it);
+    }
     output.close();
+    output.open("com" + std::to_string(counter) + ".txt");
+    for (const Eigen::VectorXd &v: com)
+	output << v.transpose() << std::endl;
+    output.close();
+    output.open("mmt" + std::to_string(counter) + ".txt");
+    for (const Eigen::VectorXd &v: mmt)
+	output << v.transpose() << std::endl;
+    output.close();
+    output.open("forces" + std::to_string(counter) + ".txt");
+    for (const Eigen::VectorXd &v: forces)
+	output << v.transpose() << std::endl;
+    output.close();
+
     size_t tRank = Config::rank;
     Config::rank += Config::dRank;
     if (Config::rank > Utility::ndof)
