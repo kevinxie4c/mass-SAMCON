@@ -106,6 +106,10 @@ int main(int argc, char* argv[])
 	}
     }
 
+    cout << "dof:" << endl;
+    for (const DegreeOfFreedom *dof: Utility::bvhs[omp_get_thread_num()].skeleton->getDofs())
+	cout << dof->getName() << endl;
+
     setUpFrags(useMass);
 
     for (size_t i = 0; i < Config::loopNum; ++i)

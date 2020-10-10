@@ -16,7 +16,23 @@ VectorXd sum(const vector<VectorXd> &list)
 {
     VectorXd v = VectorXd::Zero(list[0].size());
     for (auto u: list)
-	v = skeleton->getPositionDifferences(v, -u);
+    {
+	//v = skeleton->getPositionDifferences(v, -u); // does this trick work?
+	for (size_t i = 0; i < v.size() / 3; ++i)
+	{
+	    if (i == 1) // translation part
+		v.segment(3 * i, 3) += u.segment(3 * i, 3);
+	    else
+	    {
+		Vector3d va = v.segment(3 * i, 3);
+		Vector3d vb = u.segment(3 * i, 3);
+		AngleAxisd a(va.norm(), va.normalized());
+		AngleAxisd b(vb.norm(), vb.normalized());
+		a = a * b;
+		v.segment(3 * i, 3) = a.angle() * a.axis();
+	    }
+	}
+    }
     return v;
 }
 
