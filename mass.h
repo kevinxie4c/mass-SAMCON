@@ -29,4 +29,12 @@ void setUpFrags(bool useMass);
 
 void refine(bool useMass);
 
+Eigen::VectorXd action2offset(Eigen::VectorXd &action);
+
+void recalcFrag(const std::vector<std::vector<Eigen::VectorXd>> &statesOf, const std::vector<std::vector<Eigen::VectorXd>> &actionsOf);
+
+void guidedSAMCON();
+
+Eigen::VectorXd makeState(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel);
+
 #endif

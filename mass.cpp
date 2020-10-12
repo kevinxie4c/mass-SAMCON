@@ -16,6 +16,7 @@ size_t numFrag;
 string taskFileName("task_walk.txt");
 size_t rounds = 5;
 bool useMass = true;
+size_t guidedNum = 0;
 vector<size_t> walk;
 vector<ControlFragment> frags;
 vector<VectorXd> initMean;
@@ -35,15 +36,17 @@ int main(int argc, char* argv[])
     cout << "notImprove: use accumulative error to decide" << endl;
     if (argc > 1)
     {
-	if (argc > 4)
+	if (argc > 5)
 	{
-	    cout << argv[0] << " [task_file] [use_mass] [rounds]" << endl;
+	    cout << argv[0] << " [task_file] [use_mass] [rounds] [guided_num]" << endl;
 	    exit(0);
 	}
 	if (argc >= 3)
 	    useMass = stoi(argv[2]);
 	if (argc >= 4)
 	    rounds = stoi(argv[3]);
+	if (argc >= 5)
+	    guidedNum = stoi(argv[4]);
 	taskFileName = argv[1];
     }
     cout << "useMass = " << useMass << endl;
@@ -141,6 +144,40 @@ int main(int argc, char* argv[])
 	refine(useMass);
 	cout << "round duration: " << t.durationToString() << endl;
     }
+
+    cout << "load ControlFragment.tracked" << endl;
+    for (size_t i = 0; i < frags.size(); ++i)
+    {
+	string filename = "mean1_" + std::to_string(i + 1) + ".txt";
+	if (!Utility::fileGood(filename))
+	{
+	    cerr << "cannot read " << filename << endl;
+	    exit(0);
+	}
+	frags[i].tracked += Utility::readVectorXdFrom(filename);
+	string prefix = "frags_";
+	string fm = prefix + to_string(i) + "m.txt";
+	if (Utility::fileGood(fm))
+	{
+	    cout << i << "load frag.m" << endl;
+	    frags[i].m = Utility::readMatrixXdFrom(fm);
+	}
+	string fa = prefix + to_string(i) + "a.txt";
+	if (Utility::fileGood(fa))
+	{
+	    cout << i << "load frag.a" << endl;
+	    frags[i].a = Utility::readVectorXdFrom(fa);
+	}
+	string fs = prefix + to_string(i) + "sigma.txt";
+	if (Utility::fileGood(fs))
+	{
+	    cout << i << "load frag.sigma" << endl;
+	    frags[i].sigma = Utility::readMatrixXdFrom(fs);
+	}
+    }
+
+    for (size_t i = 0; i < guidedNum; ++i)
+	guidedSAMCON();
 
     return 0;
 }
