@@ -414,9 +414,11 @@ void refine(bool useMass)
 
     vector<VectorXd> com, mmt, forces;
     output.open("delta" + std::to_string(counter) + ".txt");
+    ofstream ofRef("ref" + std::to_string(counter) + ".txt");
     for (std::shared_ptr<const Sample> s: minSamplesList)
     {
 	output << s->delta.transpose() << std::endl;
+	ofRef << s->ref.transpose() << std::endl;
 #ifndef NDEBUG
 	for (auto it: s->com)
 	    com.push_back(it);
@@ -427,6 +429,7 @@ void refine(bool useMass)
 	    forces.push_back(it);
     }
     output.close();
+    ofRef.close();
 #ifndef NDEBUG
     output.open("com" + std::to_string(counter) + ".txt");
     for (const Eigen::VectorXd &v: com)
