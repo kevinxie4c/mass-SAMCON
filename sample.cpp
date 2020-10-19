@@ -22,10 +22,13 @@ Sample::Sample(std::shared_ptr<Sample> parent, ControlFragment &cf, const Eigen:
     ref = cf.tracked + this->delta;
     if (Config::useAFT)
 	ref = sim.skeleton->getPositionDifferences(ref, -cf.aftOffset);
+    Eigen::VectorXd pref = ref;
+    if (parent->parent != nullptr)
+	pref = parent->ref;
 #ifdef NDEBUG
-    if (sim.driveTo(ref, cf.iforces, trajectory, forces, useID))
+    if (sim.driveTo(pref, ref, cf.iforces, trajectory, forces, useID))
 #else
-    if (sim.driveTo(ref, cf.iforces, trajectory, com, mmt, forces, useID))
+    if (sim.driveTo(pref, ref, cf.iforces, trajectory, com, mmt, forces, useID))
 #endif
     {
 	resultPose = sim.skeleton->getPositions();

@@ -26,13 +26,16 @@ void Simulator::setPose(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel)
 }
 
 #ifdef NDEBUG
-bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::VectorXd> &forces, bool useID)
+bool Simulator::driveTo(const Eigen::VectorXd &pref, const Eigen::VectorXd &cref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::VectorXd> &forces, bool useID)
 #else
-bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces, bool useID)
+bool Simulator::driveTo(const Eigen::VectorXd &pref, const Eigen::VectorXd &cref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces, bool useID)
 #endif
 {
+    Eigen::VectorXd dref = skeleton->getPositionDifferences(cref, pref) / Config::groupNum;
+    Eigen::VectorXd ref = pref;
     for (size_t i = 0; i < Config::groupNum; ++i)
     {
+	ref = skeleton->getPositionDifferences(ref, -dref); // ref + dref
 	Eigen::Vector3d rightHipForce;
 	if (Config::useCompensator)
 	{
@@ -110,5 +113,12 @@ bool Simulator::driveTo(const Eigen::VectorXd &ref, const std::vector<Eigen::Vec
 	mmt.push_back(bn->getCOMLinearVelocity());
 #endif
     }
+    /*
+    if ((ref - cref).norm() > 0.0001) {
+	std::cout << "(ref - cref).norm = " << (ref - cref).norm() << std::endl;
+	std::cout <<  (cref - skeleton->getPositionDifferences(pref, - skeleton->getPositionDifferences(cref, pref))).norm() << std::endl;
+	exit(0);
+    }
+    */
     return true;
 }
