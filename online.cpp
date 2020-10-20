@@ -1,5 +1,6 @@
 #include <iostream>
 #include "config_loader.h"
+#include "utility.h"
 #include "sample.h"
 #include "mass.h"
 
@@ -10,7 +11,22 @@ void onlineSim()
 {
     cout << "onlineSim" << endl;
     VectorXd initPose, initVel;
-    Utility::setStateAt(0, initPose, initVel);
+    if (Config::initStateFileName == "")
+	Utility::setStateAt(0, initPose, initVel);
+    else
+    {
+	if (Utility::fileGood(Config::initStateFileName))
+	{
+	    vector<VectorXd> list = Utility::readVectorXdListFrom(Config::initStateFileName);
+	    initPose = list[0];
+	    initVel = list[1];
+	}
+	else
+	{
+	    cout << "cannot open file " << Config::initStateFileName << endl;
+	    exit(0);
+	}
+    }
     cout << "initial pose:" << endl;
     cout << initPose << endl;
     cout << "initial vel:" << endl;
