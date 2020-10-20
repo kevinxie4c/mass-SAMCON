@@ -180,7 +180,11 @@ int main(int argc, char* argv[])
     }
 
     for (size_t i = 0; i < guidedNum; ++i)
+    {
+	Timer t;
 	guidedSAMCON();
+	cout << "round duration: " << t.durationToString() << endl;
+    }
 
     if (online)
 	onlineSim();
