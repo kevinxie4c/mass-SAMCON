@@ -224,6 +224,31 @@ void guidedSAMCON()
 	output.close();
     }
 
+    // compute the average position and velocity (for setting up initial position and velocity)
+    vector<vector<VectorXd>> positionOf(frags.size()), velocityOf(frags.size());
+    for (size_t i = 0; i < walk.size(); ++i)
+    {
+	size_t index = walk[i];
+	positionOf[index].push_back(minSamplesList[i]->resultPose);
+	velocityOf[index].push_back(minSamplesList[i]->resultVel);
+    }
+    for (size_t i = 0; i < positionOf.size(); ++i)
+    {
+	// output initPose, initVel for frags[i]
+	VectorXd p = VectorXd::Zero(initPose.rows());
+	VectorXd v = VectorXd::Zero(initVel.rows());
+	for (const VectorXd &u: positionOf[i])
+	    p += u;
+	p /= positionOf[i].size();
+	for (const VectorXd &u: velocityOf[i])
+	    v += u;
+	v /= velocityOf[i].size();
+	output.open("init_state_" + to_string(i) + ".txt");
+	output << p.transpose() << endl;
+	output << v.transpose() << endl;
+	output.close();
+    }
+
     if (Config::showWindow)
     {
 	MyWindow::bvh4window.frame.clear();

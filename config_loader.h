@@ -39,6 +39,7 @@ namespace Config
 	extern std::string rightHipFileName;
 	extern std::string leftKneeFileName;
 	extern std::string rightKneeFileName;
+	extern std::string initStateFileName;
 
 	// algorithm
 	extern double scale;

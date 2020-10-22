@@ -37,4 +37,6 @@ void guidedSAMCON();
 
 Eigen::VectorXd makeState(const Eigen::VectorXd &pose, const Eigen::VectorXd &vel);
 
+void onlineSim();
+
 #endif

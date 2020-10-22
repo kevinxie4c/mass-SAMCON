@@ -17,6 +17,7 @@ string taskFileName("task_walk.txt");
 size_t rounds = 5;
 bool useMass = true;
 size_t guidedNum = 0;
+bool online = false;
 vector<size_t> walk;
 vector<ControlFragment> frags;
 vector<VectorXd> initMean;
@@ -36,9 +37,9 @@ int main(int argc, char* argv[])
     cout << "notImprove: use accumulative error to decide" << endl;
     if (argc > 1)
     {
-	if (argc > 5)
+	if (argc > 6)
 	{
-	    cout << argv[0] << " [task_file] [use_mass] [rounds] [guided_num]" << endl;
+	    cout << argv[0] << " [task_file] [use_mass] [rounds] [guided_num] [online]" << endl;
 	    exit(0);
 	}
 	if (argc >= 3)
@@ -47,6 +48,8 @@ int main(int argc, char* argv[])
 	    rounds = stoi(argv[3]);
 	if (argc >= 5)
 	    guidedNum = stoi(argv[4]);
+	if (argc >= 6)
+	    online = stoi(argv[5]);
 	taskFileName = argv[1];
     }
     cout << "useMass = " << useMass << endl;
@@ -156,28 +159,35 @@ int main(int argc, char* argv[])
 	}
 	frags[i].tracked += Utility::readVectorXdFrom(filename);
 	string prefix = "frags_";
-	string fm = prefix + to_string(i) + "m.txt";
+	string fm = prefix + to_string(i) + "_m.txt";
 	if (Utility::fileGood(fm))
 	{
-	    cout << i << "load frag.m" << endl;
+	    cout << i << ": load frag.m" << endl;
 	    frags[i].m = Utility::readMatrixXdFrom(fm);
 	}
-	string fa = prefix + to_string(i) + "a.txt";
+	string fa = prefix + to_string(i) + "_a.txt";
 	if (Utility::fileGood(fa))
 	{
-	    cout << i << "load frag.a" << endl;
+	    cout << i << ": load frag.a" << endl;
 	    frags[i].a = Utility::readVectorXdFrom(fa);
 	}
-	string fs = prefix + to_string(i) + "sigma.txt";
+	string fs = prefix + to_string(i) + "_sigma.txt";
 	if (Utility::fileGood(fs))
 	{
-	    cout << i << "load frag.sigma" << endl;
+	    cout << i << ": load frag.sigma" << endl;
 	    frags[i].sigma = Utility::readMatrixXdFrom(fs);
 	}
     }
 
     for (size_t i = 0; i < guidedNum; ++i)
+    {
+	Timer t;
 	guidedSAMCON();
+	cout << "round duration: " << t.durationToString() << endl;
+    }
+
+    if (online)
+	onlineSim();
 
     return 0;
 }
