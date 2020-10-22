@@ -31,11 +31,18 @@ bool Simulator::driveTo(const Eigen::VectorXd &pref, const Eigen::VectorXd &cref
 bool Simulator::driveTo(const Eigen::VectorXd &pref, const Eigen::VectorXd &cref, const std::vector<Eigen::VectorXd> &iforce, std::vector<Eigen::VectorXd> &resultTrajectory, std::vector<Eigen::Vector3d> &com, std::vector<Eigen::Vector3d> &mmt, std::vector<Eigen::VectorXd> &forces, bool useID)
 #endif
 {
-    Eigen::VectorXd dref = skeleton->getPositionDifferences(cref, pref) / Config::groupNum;
-    Eigen::VectorXd ref = pref;
+    Eigen::VectorXd dref, ref;
+    if (Config::linearInterpolatedPDTarget)
+    {
+	dref = skeleton->getPositionDifferences(cref, pref) / Config::groupNum;
+	ref = pref;
+    }
+    else
+	ref = cref;
     for (size_t i = 0; i < Config::groupNum; ++i)
     {
-	ref = skeleton->getPositionDifferences(ref, -dref); // ref + dref
+	if (Config::linearInterpolatedPDTarget)
+	    ref = skeleton->getPositionDifferences(ref, -dref); // ref + dref
 	Eigen::Vector3d rightHipForce;
 	if (Config::useCompensator)
 	{
