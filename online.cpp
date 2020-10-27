@@ -7,6 +7,14 @@
 using namespace std;
 using namespace Eigen;
 
+struct ExtForce
+{
+    string nodeName;
+    double startTime;
+    double duration;
+    Vector3d force;
+};
+
 void onlineSim()
 {
     cout << "onlineSim" << endl;
@@ -27,6 +35,38 @@ void onlineSim()
 	    exit(0);
 	}
     }
+    vector<ExtForce> extForces;
+    if (Config::extForceFileName != "")
+    {
+	if (Utility::fileGood(Config::extForceFileName))
+	{
+	    std::ifstream input(Config::extForceFileName);
+	    std::string line;
+	    cout << "External forces:" << endl;
+	    while (std::getline(input, line))
+	    {
+		std::vector<std::string> list = Utility::split(line);
+		ExtForce ef;
+		ef.nodeName = list[0];
+		ef.startTime = stod(list[1]);
+		ef.duration = stod(list[2]);
+		ef.force.x() = stod(list[3]);
+		ef.force.y() = stod(list[4]);
+		ef.force.z() = stod(list[5]);
+		cout << ef.nodeName << endl;
+		cout << ef.startTime << endl;
+		cout << ef.duration << endl;
+		cout << ef.force.transpose() << endl;
+		extForces.push_back(ef);
+	    }
+	    input.close();
+	}
+	else
+	{
+	    cout << "cannot open file " << Config::extForceFileName << endl;
+	    exit(0);
+	}
+    }
     cout << "initial pose:" << endl;
     cout << initPose << endl;
     cout << "initial vel:" << endl;
@@ -35,6 +75,9 @@ void onlineSim()
     Simulator &sim = simulators[omp_get_thread_num()];
     sim.setPose(initPose, initVel);
     SkeletonPtr skeleton = sim.skeleton;
+    double time = 0;
+    vector<VectorXd> frames;
+    frames.push_back(skeleton->getPositions());
     for (int i = 0; i < walk.size(); ++i)
     {
 	cout << "i = " << i << endl;
@@ -74,8 +117,18 @@ void onlineSim()
 	    for (size_t k = 0; k < Config::stepPerFrame; ++k)
 	    {
 		skeleton->setForces(force);
+		for (ExtForce ef: extForces)
+		{
+		    if (ef.startTime <= time && time <= ef.startTime + ef.duration)
+		    {
+			skeleton->getBodyNode(ef.nodeName)->addExtForce(ef.force);
+		    }
+		}
 		sim.world->step();
+		time += Config::timeStep;
+		skeleton->clearExternalForces();
 	    }
+	    frames.push_back(skeleton->getPositions());
 	}
 	Vector3d zmp;
 	Utility::ErrorTerms et;
@@ -86,7 +139,7 @@ void onlineSim()
 
     }
     ofstream output(Config::outputFileName + "_online.txt");
-    for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(samples.back()->getTrajectory())) // used bvh4window.frame instead?
+    for (const Eigen::VectorXd &v: Utility::bvhs[omp_get_thread_num()].frameToEulerAngle(frames)) // used bvh4window.frame instead?
 	output << v.transpose() << std::endl;
     output.close();
 }

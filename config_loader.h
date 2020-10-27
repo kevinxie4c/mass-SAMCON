@@ -40,6 +40,7 @@ namespace Config
 	extern std::string leftKneeFileName;
 	extern std::string rightKneeFileName;
 	extern std::string initStateFileName;
+	extern std::string extForceFileName;
 
 	// algorithm
 	extern double scale;
