@@ -81,6 +81,7 @@ namespace Config
 	std::string rightHipName;
 	double inverseForceRatio = 1.0;
 	bool linearInterpolatedPDTarget = false;
+	bool originalSAMCON = false;
 
 	// others
 	bool showWindow = false;
@@ -258,6 +259,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	inverseForceRatio = std::stod(value);
     else if (parameter == "linearInterpolatedPDTarget")
 	linearInterpolatedPDTarget = std::stoi(value);
+    else if (parameter == "originalSAMCON")
+	originalSAMCON = std::stoi(value);
     else
 	std::cout << "warning: " << parameter << " is not set" << std::endl;
 

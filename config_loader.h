@@ -78,6 +78,7 @@ namespace Config
 	extern bool d_cmp;
 	extern double inverseForceRatio;
 	extern bool linearInterpolatedPDTarget;
+	extern bool originalSAMCON;
 
 	// others
 	extern bool showWindow;
