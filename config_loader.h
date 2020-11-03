@@ -78,6 +78,7 @@ namespace Config
 	extern bool k_cmp;
 	extern bool d_cmp;
 	extern double inverseForceRatio;
+	extern bool originalSAMCON;
 
 	// others
 	extern bool showWindow;

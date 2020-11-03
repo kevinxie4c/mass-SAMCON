@@ -97,7 +97,7 @@ void refine(bool useMass)
 	}
 
 	i_end = i_begin + Config::slidingWindow;
-	if (i_end > walk.size())
+	if (i_end > walk.size() || Config::originalSAMCON)
 	    i_end = walk.size();
 	bool failed = false;
 	bool failedAtBegin = false;
@@ -334,6 +334,8 @@ void refine(bool useMass)
 	}
 	*/
 	
+	if (Config::originalSAMCON)
+	     break;
 	if (failedAtBegin)
 	{
 	    // rollback to the last successfull trial if failed at the beginning
