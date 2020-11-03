@@ -61,10 +61,14 @@ void refine(bool useMass)
     if (initMean.empty())
 	for (size_t i = 0; i < walk.size(); ++i)
 	    initMean.push_back(Eigen::VectorXd::Zero(Config::rank + flexibleBaseList.size()));
-    cout << initMean[0] << endl;
+    cout << "initMean[0]: " << initMean[0] << endl;
+    VectorXd diagonal = VectorXd::Ones(Config::rank + flexibleBaseList.size());
+    if (Config::diagonalFileName != "")
+	diagonal = Utility::readVectorXdFrom(Config::diagonalFileName);
+    cout << "diagonal: " << diagonal << endl;
 
     for (size_t i = 0; i < walk.size(); ++i)
-	cmaes.push_back(WeirdCMAES(Config::rank + flexibleBaseList.size(), Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i]));
+	cmaes.push_back(WeirdCMAES(Config::rank + flexibleBaseList.size(), Config::sampleNum, Config::saveNum, Config::initSigma, initMean[i], diagonal));
     vector<size_t> generation(walk.size(), 0);
     vector<size_t> notImprove(walk.size(), 0);
     vector<size_t> trialTimes(walk.size(), 0);

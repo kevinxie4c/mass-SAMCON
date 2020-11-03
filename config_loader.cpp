@@ -40,6 +40,7 @@ namespace Config
 	std::string rightKneeFileName;
 	std::string initStateFileName;
 	std::string extForceFileName;
+	std::string diagonalFileName;
 
 	// algorithm
 	double scale = 100.0;
@@ -251,6 +252,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	initStateFileName = value;
     else if (parameter == "extForceFileName")
 	extForceFileName = value;
+    else if (parameter == "diagonalFileName")
+	diagonalFileName = value;
     else if (parameter == "useCompensator")
 	useCompensator = std::stoi(value);
     else if (parameter == "k_cmp")

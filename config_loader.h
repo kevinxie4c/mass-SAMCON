@@ -41,6 +41,7 @@ namespace Config
 	extern std::string rightKneeFileName;
 	extern std::string initStateFileName;
 	extern std::string extForceFileName;
+	extern std::string diagonalFileName;
 
 	// algorithm
 	extern double scale;
