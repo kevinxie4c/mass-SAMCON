@@ -83,6 +83,7 @@ namespace Config
 	std::string rightHipName;
 	double inverseForceRatio = 1.0;
 	bool originalSAMCON = false;
+	std::string collisionDetector = "ode";
 
 	// others
 	bool showWindow = false;
@@ -264,6 +265,8 @@ void Config::setParameter(const std::string &parameter, const std::string &value
 	inverseForceRatio = std::stod(value);
     else if (parameter == "originalSAMCON")
 	originalSAMCON = std::stoi(value);
+    else if (parameter == "collisionDetector")
+	collisionDetector = value;
     else
 	std::cout << "warning: " << parameter << " is not set" << std::endl;
 

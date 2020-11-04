@@ -14,7 +14,12 @@ Simulator::Simulator(BVHData &bvh)
     world->addSkeleton(floor = Utility::createFloor());
     solver = world->getConstraintSolver();
     solver->setLCPSolver(dart::common::make_unique<dart::constraint::PGSLCPSolver>(world->getTimeStep()));
-    solver->setCollisionDetector(detector = dart::collision::OdeCollisionDetector::create());
+    if (Config::collisionDetector == "ode")
+	solver->setCollisionDetector(detector = dart::collision::OdeCollisionDetector::create());
+    else if (Config::collisionDetector == "fcl")
+	solver->setCollisionDetector(detector = dart::collision::FCLCollisionDetector::create());
+    else
+	solver->setCollisionDetector(detector = dart::collision::DARTCollisionDetector::create());
     skeletonGroup = detector->createCollisionGroup(skeleton.get());
     floorGroup = detector->createCollisionGroup(floor.get());
 }

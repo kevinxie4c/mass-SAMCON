@@ -80,6 +80,7 @@ namespace Config
 	extern bool d_cmp;
 	extern double inverseForceRatio;
 	extern bool originalSAMCON;
+	extern std::string collisionDetector;
 
 	// others
 	extern bool showWindow;

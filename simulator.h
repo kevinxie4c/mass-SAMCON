@@ -3,6 +3,8 @@
 
 #include <dart/dart.hpp>
 #include <dart/collision/ode/OdeCollisionDetector.hpp>
+#include <dart/collision/fcl/FCLCollisionDetector.hpp>
+#include <dart/collision/dart/DARTCollisionDetector.hpp>
 #include <Eigen/Core>
 #include "config_loader.h"
 #include "BVHData.h"
