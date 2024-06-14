@@ -7,7 +7,8 @@ Install [Dart](https://dartsim.github.io/) following the [instructions](https://
 
 ## Build
 ```
-cmake .
+mkdir build && cd build
+cmake ..
 make
 ```
 
